@@ -4,9 +4,9 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   BarChart3, TrendingUp, Users, CalendarCheck, Clock,
-  ArrowUpRight, ArrowDownRight, Download, Filter,
-  PieChart, Activity, Briefcase, UserCheck, UserX,
-  Calendar, CheckCircle2, XCircle, AlertCircle,
+  Download, Filter,
+  PieChart, Activity, Briefcase,
+  CheckCircle2, XCircle, AlertCircle,
 } from "lucide-react";
 
 interface ReportData {
@@ -159,10 +159,40 @@ export default function ReportsPage() {
           <p className="text-sm text-slate-500 mt-1">Comprehensive workforce insights and leave analytics</p>
         </div>
         <div className="flex items-center gap-3">
-          <button className="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 text-slate-700 font-medium rounded-xl text-sm hover:bg-slate-50 transition-all">
-            <Filter className="w-4 h-4" /> Filter
+          <button onClick={() => fetchReportData()} className="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 text-slate-700 font-medium rounded-xl text-sm hover:bg-slate-50 transition-all active:scale-95">
+            <Filter className="w-4 h-4" /> Refresh Data
           </button>
-          <button className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-medium rounded-xl text-sm hover:opacity-90 transition-all shadow-lg shadow-indigo-500/20">
+          <button onClick={() => {
+            if (!data) return;
+            const rows = [
+              ["Metric", "Value"],
+              ["Total Employees", String(data.totalEmployees)],
+              ["Active Employees", String(data.activeEmployees)],
+              ["Inactive Employees", String(data.inactiveEmployees)],
+              ["On Probation", String(data.onProbation)],
+              ["Total Leaves", String(data.totalLeaves)],
+              ["Approved Leaves", String(data.approvedLeaves)],
+              ["Rejected Leaves", String(data.rejectedLeaves)],
+              ["Pending Leaves", String(data.pendingLeaves)],
+              ["Approval Rate", `${approvalRate}%`],
+              [""],
+              ["Department", "Employees", "Leaves"],
+              ...data.departmentStats.map(d => [d.department, String(d.employees), String(d.leaves)]),
+              [""],
+              ["Month", "Approved", "Rejected", "Pending"],
+              ...data.monthlyLeaveData.map(m => [m.month, String(m.approved), String(m.rejected), String(m.pending)]),
+            ];
+            const csv = rows.map(r => r.join(",")).join("\n");
+            const blob = new Blob([csv], { type: "text/csv" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `hr-report-${new Date().toISOString().split("T")[0]}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+          }} className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-medium rounded-xl text-sm hover:opacity-90 transition-all shadow-lg shadow-indigo-500/20 active:scale-95">
             <Download className="w-4 h-4" /> Export Report
           </button>
         </div>
@@ -171,10 +201,10 @@ export default function ReportsPage() {
       {/* Top Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: "Total Workforce", value: data?.totalEmployees || 0, icon: Users, gradient: "from-blue-500 to-indigo-600", change: "+12%", up: true },
-          { label: "Leave Approval Rate", value: `${approvalRate}%`, icon: CheckCircle2, gradient: "from-emerald-500 to-teal-600", change: "+5%", up: true },
-          { label: "Pending Reviews", value: data?.pendingLeaves || 0, icon: Clock, gradient: "from-amber-500 to-orange-600", change: "-3", up: false },
-          { label: "On Probation", value: data?.onProbation || 0, icon: AlertCircle, gradient: "from-violet-500 to-purple-600", change: "0", up: true },
+          { label: "Total Workforce", value: data?.totalEmployees || 0, icon: Users, gradient: "from-blue-500 to-indigo-600" },
+          { label: "Leave Approval Rate", value: `${approvalRate}%`, icon: CheckCircle2, gradient: "from-emerald-500 to-teal-600" },
+          { label: "Pending Reviews", value: data?.pendingLeaves || 0, icon: Clock, gradient: "from-amber-500 to-orange-600" },
+          { label: "On Probation", value: data?.onProbation || 0, icon: AlertCircle, gradient: "from-violet-500 to-purple-600" },
         ].map((stat, i) => (
           <motion.div key={stat.label} variants={cardVariants}
             className="relative bg-white rounded-2xl p-5 border border-slate-100 shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden group">
@@ -186,10 +216,6 @@ export default function ReportsPage() {
               <p className="text-2xl font-black text-slate-900">{stat.value}</p>
               <div className="flex items-center justify-between mt-1">
                 <p className="text-xs text-slate-500 font-medium">{stat.label}</p>
-                <span className={`flex items-center gap-0.5 text-[10px] font-bold ${stat.up ? "text-emerald-600" : "text-amber-600"}`}>
-                  {stat.up ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
-                  {stat.change}
-                </span>
               </div>
             </div>
           </motion.div>
