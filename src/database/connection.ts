@@ -96,6 +96,34 @@ export interface DBData {
     created_at: string;
     related_id?: number;
   }[];
+  performance_goals: {
+    id: number;
+    title: string;
+    description: string;
+    progress: number;
+    status: "on_track" | "at_risk" | "completed" | "not_started";
+    dueDate: string;
+    category: string;
+    assignedBy: string;
+    assignedAt: string;
+    employeeId: string;
+  }[];
+  performance_feedback: {
+    id: number;
+    from: string;
+    role: string;
+    message: string;
+    rating: number;
+    date: string;
+    type: "praise" | "constructive" | "general";
+    employeeId: string;
+  }[];
+  performance_skills: {
+    skill: string;
+    rating: number;
+    max: number;
+    employeeId: string;
+  }[];
 }
 
 // HR Admin password: hrcodeoriginai@1234 (pre-hashed)
@@ -130,6 +158,9 @@ const DEFAULT_DATA: DBData = {
   ],
   announcements: [],
   notifications: [],
+  performance_goals: [],
+  performance_feedback: [],
+  performance_skills: [],
 };
 
 function initializeData(): DBData {
@@ -139,6 +170,9 @@ function initializeData(): DBData {
       const data = JSON.parse(raw) as DBData;
       // Migrate: ensure new fields exist
       if (!data.notifications) data.notifications = [];
+      if (!data.performance_goals) data.performance_goals = [];
+      if (!data.performance_feedback) data.performance_feedback = [];
+      if (!data.performance_skills) data.performance_skills = [];
       // Migrate leaves to include cancelled_at field
       if (data.leaves && data.leaves.length > 0) {
         data.leaves = data.leaves.map((l) => ({
