@@ -67,19 +67,22 @@ export interface EmployeeFormData {
 
 // ==================== Leave Types ====================
 
+export type LeaveType = "CL" | "SL" | "EL" | "WFH";
+
 export interface Leave {
   id: number;
   employee_id: number;
   emp_id?: string;
   employee_name?: string;
-  leave_type: "CL";
+  leave_type: LeaveType;
   start_date: string;
   end_date: string;
   reason: string;
-  status: "pending" | "approved" | "rejected";
+  status: "pending" | "approved" | "rejected" | "cancelled";
   applied_at: string;
   reviewed_at?: string;
   reviewed_by?: string;
+  cancelled_at?: string;
 }
 
 export interface LeaveBalance {
@@ -90,13 +93,51 @@ export interface LeaveBalance {
   total_cl: number;
   used_cl: number;
   remaining_cl: number;
+  total_sl: number;
+  used_sl: number;
+  remaining_sl: number;
+  total_el: number;
+  used_el: number;
+  remaining_el: number;
+  total_wfh: number;
+  used_wfh: number;
+  remaining_wfh: number;
 }
 
 export interface LeaveApplication {
-  leave_type: "CL";
+  leave_type: LeaveType;
   start_date: string;
   end_date: string;
   reason: string;
+}
+
+// ==================== Leave Policy Types ====================
+
+export interface LeavePolicy {
+  id: number;
+  leave_type: LeaveType;
+  label: string;
+  monthly_quota: number;
+  carry_forward: boolean;
+  requires_approval: boolean;
+  min_days_advance: number;
+  max_consecutive_days: number;
+  is_active: boolean;
+  updated_at: string;
+}
+
+// ==================== Notification Types ====================
+
+export interface Notification {
+  id: number;
+  user_id: number;
+  user_role: "hr" | "employee";
+  type: "leave_applied" | "leave_approved" | "leave_rejected" | "leave_cancelled" | "announcement" | "policy_update";
+  title: string;
+  message: string;
+  is_read: boolean;
+  created_at: string;
+  related_id?: number;
 }
 
 // ==================== Auth Types ====================
@@ -147,6 +188,19 @@ export interface EmployeeStats {
   rejectedLeaves: number;
 }
 
+// ==================== Team Calendar Types ====================
+
+export interface TeamCalendarEntry {
+  employee_id: number;
+  emp_id: string;
+  employee_name: string;
+  department: string;
+  leave_type: LeaveType;
+  start_date: string;
+  end_date: string;
+  status: "approved" | "pending";
+}
+
 // ==================== API Response Types ====================
 
 export interface ApiResponse<T = unknown> {
@@ -162,8 +216,6 @@ export interface PaginatedResponse<T> extends ApiResponse<T[]> {
   limit: number;
   totalPages: number;
 }
-
-
 
 // ==================== Holiday Types ====================
 

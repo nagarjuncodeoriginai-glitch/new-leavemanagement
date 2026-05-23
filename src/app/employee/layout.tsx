@@ -19,13 +19,16 @@ import {
   Bell,
   Sparkles,
   Home,
+  Calendar,
 } from "lucide-react";
 import { LiveClock } from "@/components/ui/live-clock";
+import NotificationsPanel from "@/components/notifications-panel";
 
 const navItems = [
   { href: "/employee", label: "Dashboard", icon: LayoutDashboard, color: "from-emerald-500 to-teal-500" },
   { href: "/employee/apply-leave", label: "Apply Leave", icon: CalendarPlus, color: "from-blue-500 to-indigo-500" },
   { href: "/employee/leaves", label: "Leave History", icon: CalendarCheck, color: "from-violet-500 to-purple-500" },
+  { href: "/employee/team-calendar", label: "Team Calendar", icon: Calendar, color: "from-teal-500 to-cyan-500" },
   { href: "/employee/attendance", label: "Attendance", icon: Clock, color: "from-amber-500 to-orange-500" },
   { href: "/employee/performance", label: "Performance", icon: TrendingUp, color: "from-rose-500 to-pink-500" },
   { href: "/employee/holidays", label: "Holidays", icon: CalendarDays, color: "from-cyan-500 to-blue-500" },
@@ -163,6 +166,7 @@ export default function EmployeeLayout({ children }: { children: React.ReactNode
               <p className="text-[11px] text-slate-400 font-medium">Welcome, {user.name?.split(" ")[0] || user.username}</p>
             </div>
             <LiveClock />
+            <NotificationsPanel />
             <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 rounded-xl border border-emerald-100">
               <div className="status-dot-online" />
               <span className="text-[11px] font-semibold text-emerald-700">Online</span>

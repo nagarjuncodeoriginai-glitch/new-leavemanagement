@@ -49,14 +49,15 @@ export interface DBData {
   leaves: {
     id: number;
     employee_id: number;
-    leave_type: "CL";
+    leave_type: "CL" | "SL" | "EL" | "WFH";
     start_date: string;
     end_date: string;
     reason: string;
-    status: "pending" | "approved" | "rejected";
+    status: "pending" | "approved" | "rejected" | "cancelled";
     applied_at: string;
     reviewed_at: string | null;
     reviewed_by: string | null;
+    cancelled_at: string | null;
   }[];
   leave_balance: {
     id: number;
@@ -66,6 +67,15 @@ export interface DBData {
     total_cl: number;
     used_cl: number;
     remaining_cl: number;
+    total_sl: number;
+    used_sl: number;
+    remaining_sl: number;
+    total_el: number;
+    used_el: number;
+    remaining_el: number;
+    total_wfh: number;
+    used_wfh: number;
+    remaining_wfh: number;
   }[];
   holidays: {
     id: number;
@@ -83,6 +93,29 @@ export interface DBData {
     priority: "high" | "medium" | "low";
     author: string;
     isActive: boolean;
+  }[];
+  notifications: {
+    id: number;
+    user_id: number;
+    user_role: "hr" | "employee";
+    type: "leave_applied" | "leave_approved" | "leave_rejected" | "leave_cancelled" | "announcement" | "policy_update";
+    title: string;
+    message: string;
+    is_read: boolean;
+    created_at: string;
+    related_id?: number;
+  }[];
+  leave_policies: {
+    id: number;
+    leave_type: "CL" | "SL" | "EL" | "WFH";
+    label: string;
+    monthly_quota: number;
+    carry_forward: boolean;
+    requires_approval: boolean;
+    min_days_advance: number;
+    max_consecutive_days: number;
+    is_active: boolean;
+    updated_at: string;
   }[];
 }
 
@@ -117,13 +150,90 @@ const DEFAULT_DATA: DBData = {
     { id: 16, name: "Raksha Bandhan", date: "2025-08-09", type: "optional", day: "Saturday" },
   ],
   announcements: [],
+  notifications: [],
+  leave_policies: [
+    {
+      id: 1,
+      leave_type: "CL",
+      label: "Casual Leave",
+      monthly_quota: 2,
+      carry_forward: false,
+      requires_approval: true,
+      min_days_advance: 0,
+      max_consecutive_days: 2,
+      is_active: true,
+      updated_at: new Date().toISOString(),
+    },
+    {
+      id: 2,
+      leave_type: "SL",
+      label: "Sick Leave",
+      monthly_quota: 1,
+      carry_forward: false,
+      requires_approval: true,
+      min_days_advance: 0,
+      max_consecutive_days: 3,
+      is_active: true,
+      updated_at: new Date().toISOString(),
+    },
+    {
+      id: 3,
+      leave_type: "EL",
+      label: "Earned Leave",
+      monthly_quota: 1,
+      carry_forward: true,
+      requires_approval: true,
+      min_days_advance: 3,
+      max_consecutive_days: 5,
+      is_active: true,
+      updated_at: new Date().toISOString(),
+    },
+    {
+      id: 4,
+      leave_type: "WFH",
+      label: "Work From Home",
+      monthly_quota: 4,
+      carry_forward: false,
+      requires_approval: true,
+      min_days_advance: 1,
+      max_consecutive_days: 5,
+      is_active: true,
+      updated_at: new Date().toISOString(),
+    },
+  ],
 };
 
 function initializeData(): DBData {
   try {
     if (fs.existsSync(DATA_FILE)) {
       const raw = fs.readFileSync(DATA_FILE, "utf-8");
-      return JSON.parse(raw);
+      const data = JSON.parse(raw) as DBData;
+      // Migrate: ensure new fields exist
+      if (!data.notifications) data.notifications = [];
+      if (!data.leave_policies) data.leave_policies = DEFAULT_DATA.leave_policies;
+      // Migrate leave_balance records to include new leave types
+      if (data.leave_balance && data.leave_balance.length > 0) {
+        data.leave_balance = data.leave_balance.map((lb) => ({
+          ...lb,
+          total_sl: lb.total_sl ?? 1,
+          used_sl: lb.used_sl ?? 0,
+          remaining_sl: lb.remaining_sl ?? 1,
+          total_el: lb.total_el ?? 1,
+          used_el: lb.used_el ?? 0,
+          remaining_el: lb.remaining_el ?? 1,
+          total_wfh: lb.total_wfh ?? 4,
+          used_wfh: lb.used_wfh ?? 0,
+          remaining_wfh: lb.remaining_wfh ?? 4,
+        }));
+      }
+      // Migrate leaves to include cancelled_at field
+      if (data.leaves && data.leaves.length > 0) {
+        data.leaves = data.leaves.map((l) => ({
+          ...l,
+          cancelled_at: l.cancelled_at ?? null,
+        }));
+      }
+      return data;
     }
   } catch {
     // If file is corrupted, recreate it
