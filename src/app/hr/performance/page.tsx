@@ -76,60 +76,58 @@ export default function HRPerformancePage() {
   });
   const [skillForm, setSkillForm] = useState({ skill: "", rating: 3 });
 
-  const fetchEmployees = useCallback(async () => {
+  const fetchData = useCallback(async () => {
     try {
-      const res = await fetch("/api/employees?limit=100");
-      const json = await res.json();
-      if (json.success) setEmployees(json.data || []);
+      const [empRes, perfRes] = await Promise.all([
+        fetch("/api/employees?limit=100"),
+        fetch("/api/performance"),
+      ]);
+      const empJson = await empRes.json();
+      const perfJson = await perfRes.json();
+      if (empJson.success) setEmployees(empJson.data || []);
+      if (perfJson.success) {
+        setGoals(perfJson.data.goals || []);
+        setFeedbacks(perfJson.data.feedback || []);
+        setSkills(perfJson.data.skills || []);
+      }
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   }, []);
 
-  useEffect(() => { fetchEmployees(); }, [fetchEmployees]);
-
-  useEffect(() => {
-    const savedGoals = localStorage.getItem("performance_goals");
-    const savedFeedback = localStorage.getItem("performance_feedback");
-    const savedSkills = localStorage.getItem("performance_skills");
-    if (savedGoals) setGoals(JSON.parse(savedGoals));
-    if (savedFeedback) setFeedbacks(JSON.parse(savedFeedback));
-    if (savedSkills) setSkills(JSON.parse(savedSkills));
-  }, []);
-
-  const saveGoals = (data: Goal[]) => {
-    setGoals(data);
-    localStorage.setItem("performance_goals", JSON.stringify(data));
-  };
-  const saveFeedbacks = (data: FeedbackItem[]) => {
-    setFeedbacks(data);
-    localStorage.setItem("performance_feedback", JSON.stringify(data));
-  };
-  const saveSkills = (data: SkillRating[]) => {
-    setSkills(data);
-    localStorage.setItem("performance_skills", JSON.stringify(data));
-  };
+  useEffect(() => { fetchData(); }, [fetchData]);
 
 
-  const handleAddGoal = (e: React.FormEvent) => {
+  const handleAddGoal = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedEmpId || !goalForm.title || !goalForm.dueDate || !goalForm.category) {
       toast.error("Error", "Fill all required fields and select an employee.");
       return;
     }
-    if (editGoal) {
-      const updated = goals.map(g => g.id === editGoal.id ? { ...g, ...goalForm, employeeId: selectedEmpId } : g);
-      saveGoals(updated);
-      toast.success("Updated", "Goal updated successfully.");
-    } else {
-      const newGoal: Goal = {
-        id: Date.now(), ...goalForm,
-        assignedBy: "HR Admin",
-        assignedAt: new Date().toISOString(),
-        employeeId: selectedEmpId,
-      };
-      saveGoals([...goals, newGoal]);
-      toast.success("Assigned", "Goal assigned to employee.");
-    }
+    try {
+      if (editGoal) {
+        const res = await fetch("/api/performance", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ type: "goal", id: editGoal.id, data: { ...goalForm, employeeId: selectedEmpId } }),
+        });
+        const json = await res.json();
+        if (json.success) {
+          setGoals(goals.map(g => g.id === editGoal.id ? json.data : g));
+          toast.success("Updated", "Goal updated successfully.");
+        } else { toast.error("Error", json.message); }
+      } else {
+        const res = await fetch("/api/performance", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ type: "goal", data: { ...goalForm, employeeId: selectedEmpId } }),
+        });
+        const json = await res.json();
+        if (json.success) {
+          setGoals([...goals, json.data]);
+          toast.success("Assigned", "Goal assigned to employee.");
+        } else { toast.error("Error", json.message); }
+      }
+    } catch { toast.error("Error", "Network error."); }
     setShowGoalModal(false);
     setEditGoal(null);
     setGoalForm({ title: "", description: "", progress: 0, status: "not_started", dueDate: "", category: "" });
@@ -138,45 +136,75 @@ export default function HRPerformancePage() {
   const handleDeleteGoal = async (id: number) => {
     const ok = await confirm({ title: "Delete Goal", message: "Remove this goal?", confirmText: "Delete", type: "danger" });
     if (!ok) return;
-    saveGoals(goals.filter(g => g.id !== id));
-    toast.success("Deleted", "Goal removed.");
+    try {
+      const res = await fetch(`/api/performance?type=goal&id=${id}`, { method: "DELETE" });
+      const json = await res.json();
+      if (json.success) {
+        setGoals(goals.filter(g => g.id !== id));
+        toast.success("Deleted", "Goal removed.");
+      } else { toast.error("Error", json.message); }
+    } catch { toast.error("Error", "Network error."); }
   };
 
-  const handleAddFeedback = (e: React.FormEvent) => {
+  const handleAddFeedback = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedEmpId || !feedbackForm.message) {
       toast.error("Error", "Select employee and write feedback.");
       return;
     }
-    const fb: FeedbackItem = {
-      id: Date.now(), from: "HR Admin", role: "HR",
-      message: feedbackForm.message, rating: feedbackForm.rating,
-      date: new Date().toISOString().split("T")[0],
-      type: feedbackForm.type, employeeId: selectedEmpId,
-    };
-    saveFeedbacks([...feedbacks, fb]);
+    try {
+      const res = await fetch("/api/performance", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "feedback", data: { ...feedbackForm, employeeId: selectedEmpId } }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        setFeedbacks([...feedbacks, json.data]);
+        toast.success("Submitted", "Feedback given to employee.");
+      } else { toast.error("Error", json.message); }
+    } catch { toast.error("Error", "Network error."); }
     setShowFeedbackModal(false);
     setFeedbackForm({ message: "", rating: 5, type: "general" });
-    toast.success("Submitted", "Feedback given to employee.");
   };
 
   const handleDeleteFeedback = async (id: number) => {
     const ok = await confirm({ title: "Delete Feedback", message: "Remove?", confirmText: "Delete", type: "danger" });
     if (!ok) return;
-    saveFeedbacks(feedbacks.filter(f => f.id !== id));
+    try {
+      const res = await fetch(`/api/performance?type=feedback&id=${id}`, { method: "DELETE" });
+      const json = await res.json();
+      if (json.success) {
+        setFeedbacks(feedbacks.filter(f => f.id !== id));
+        toast.success("Deleted", "Feedback removed.");
+      } else { toast.error("Error", json.message); }
+    } catch { toast.error("Error", "Network error."); }
   };
 
-  const handleAddSkill = (e: React.FormEvent) => {
+  const handleAddSkill = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedEmpId || !skillForm.skill) {
       toast.error("Error", "Select employee and enter skill.");
       return;
     }
-    const existing = skills.filter(s => !(s.employeeId === selectedEmpId && s.skill === skillForm.skill));
-    saveSkills([...existing, { skill: skillForm.skill, rating: skillForm.rating, max: 5, employeeId: selectedEmpId }]);
+    try {
+      const res = await fetch("/api/performance", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "skill", data: { ...skillForm, employeeId: selectedEmpId } }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        // Replace existing skill for same employee or add new
+        setSkills(prev => {
+          const filtered = prev.filter(s => !(s.employeeId === selectedEmpId && s.skill === skillForm.skill));
+          return [...filtered, json.data];
+        });
+        toast.success("Rated", "Skill rating saved.");
+      } else { toast.error("Error", json.message); }
+    } catch { toast.error("Error", "Network error."); }
     setShowSkillModal(false);
     setSkillForm({ skill: "", rating: 3 });
-    toast.success("Rated", "Skill rating saved.");
   };
 
   const filteredEmployees = employees.filter(e =>
