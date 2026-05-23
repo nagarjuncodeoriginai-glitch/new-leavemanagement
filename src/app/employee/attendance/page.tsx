@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
-  Clock, LogIn, LogOut, CheckCircle2, XCircle,
+  Clock, LogIn, LogOut, CheckCircle2,
   Timer, MapPin, ChevronLeft, ChevronRight,
   BarChart3, AlertCircle, Navigation, Wifi, WifiOff,
 } from "lucide-react";
@@ -37,10 +37,6 @@ function getDistanceFromOffice(lat: number, lng: number): number {
     Math.cos(p1) * Math.cos(p2) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c;
-}
-
-function getStorageKey(): string {
-  return "";
 }
 
 export default function AttendancePage() {

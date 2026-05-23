@@ -49,6 +49,21 @@ export async function GET(request: NextRequest) {
   }
 }
 
+// Helper: parse time string like "03:15 pm" or "15:15" to hours (0-23) and minutes
+function parseTimeToMinutes(timeStr: string): number {
+  const match = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM|am|pm)?/);
+  if (!match) return -1;
+  let h = parseInt(match[1]);
+  const m = parseInt(match[2]);
+  const period = match[3];
+  if (period) {
+    const p = period.toUpperCase();
+    if (p === "PM" && h !== 12) h += 12;
+    if (p === "AM" && h === 12) h = 0;
+  }
+  return h * 60 + m;
+}
+
 // POST check-in or check-out
 export async function POST(request: NextRequest) {
   try {
@@ -118,7 +133,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: true,
         message: `Checked in at ${timeStr}`,
-        data: { time: timeStr, location: location || locationStr, status: isLate ? "late" : "present" },
+        data: { time: timeStr, location: locationStr, status: isLate ? "late" : "present" },
       });
     }
 
@@ -138,21 +153,12 @@ export async function POST(request: NextRequest) {
 
       const locationStr = location || (latitude && longitude ? `Lat: ${latitude}, Lng: ${longitude}` : "Unknown");
 
-      // Calculate hours worked
-      const checkInStr = db.attendance[existingIndex].check_in || "";
-      const checkInParts = checkInStr.match(/(\d+):(\d+)\s*(AM|PM)?/i);
+      // Calculate hours worked using check_in and current time
+      const checkInMinutes = parseTimeToMinutes(db.attendance[existingIndex].check_in || "");
+      const checkOutMinutes = now.getHours() * 60 + now.getMinutes();
       let hoursWorked = 0;
-      if (checkInParts) {
-        let h = parseInt(checkInParts[1]);
-        const m = parseInt(checkInParts[2]);
-        const period = checkInParts[3];
-        if (period) {
-          if (period.toUpperCase() === "PM" && h !== 12) h += 12;
-          if (period.toUpperCase() === "AM" && h === 12) h = 0;
-        }
-        const checkInDate = new Date();
-        checkInDate.setHours(h, m, 0);
-        hoursWorked = Math.max(0, (now.getTime() - checkInDate.getTime()) / (1000 * 60 * 60));
+      if (checkInMinutes >= 0 && checkOutMinutes > checkInMinutes) {
+        hoursWorked = (checkOutMinutes - checkInMinutes) / 60;
       }
 
       db.attendance[existingIndex].check_out = timeStr;
@@ -177,6 +183,51 @@ export async function POST(request: NextRequest) {
       );
     }
     console.error("Attendance action error:", error);
+    return NextResponse.json({ success: false, message: "Internal server error" }, { status: 500 });
+  }
+}
+
+// DELETE attendance record (HR only)
+export async function DELETE(request: NextRequest) {
+  try {
+    await requireAuth("hr");
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get("id");
+
+    if (!id) {
+      return NextResponse.json(
+        { success: false, message: "Attendance record ID is required" },
+        { status: 400 }
+      );
+    }
+
+    const db = getData();
+    if (!db.attendance) db.attendance = [];
+
+    const recordIndex = db.attendance.findIndex(r => r.id === parseInt(id));
+    if (recordIndex === -1) {
+      return NextResponse.json(
+        { success: false, message: "Attendance record not found" },
+        { status: 404 }
+      );
+    }
+
+    db.attendance.splice(recordIndex, 1);
+    saveData(db);
+
+    return NextResponse.json({
+      success: true,
+      message: "Attendance record deleted successfully",
+    });
+  } catch (error: unknown) {
+    const err = error as Error;
+    if (err.message === "Unauthorized" || err.message === "Forbidden") {
+      return NextResponse.json(
+        { success: false, message: err.message },
+        { status: err.message === "Unauthorized" ? 401 : 403 }
+      );
+    }
+    console.error("Delete attendance error:", error);
     return NextResponse.json({ success: false, message: "Internal server error" }, { status: 500 });
   }
 }

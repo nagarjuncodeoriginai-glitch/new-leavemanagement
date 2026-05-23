@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import {
   Clock, CheckCircle2, XCircle, Users, MapPin,
   Calendar, Timer, AlertCircle, Search, Download,
-  LogIn, LogOut, BarChart3,
+  LogIn, LogOut, BarChart3, Trash2,
 } from "lucide-react";
 
 interface AttendanceRecord {
@@ -81,6 +81,19 @@ export default function HRAttendancePage() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!confirm("Are you sure you want to delete this attendance record?")) return;
+    try {
+      const res = await fetch(`/api/attendance?id=${id}`, { method: "DELETE" });
+      const json = await res.json();
+      if (json.success) {
+        fetchAttendance();
+      }
+    } catch (error) {
+      console.error("Delete error:", error);
+    }
   };
 
   return (
@@ -162,6 +175,7 @@ export default function HRAttendancePage() {
                   <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase">Hours</th>
                   <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase">Status</th>
                   <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase">Location</th>
+                  <th className="text-right px-4 py-3 text-xs font-medium text-slate-500 uppercase">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -211,6 +225,13 @@ export default function HRAttendancePage() {
                         <MapPin className="w-3 h-3 text-slate-400 flex-shrink-0" />
                         <span className="text-xs text-slate-500 truncate">{record.check_in_location || "—"}</span>
                       </div>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <button onClick={() => handleDelete(record.id)}
+                        className="p-2 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-600 transition-colors"
+                        title="Delete record">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </td>
                   </motion.tr>
                 ))}
