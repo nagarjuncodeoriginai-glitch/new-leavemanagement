@@ -12,6 +12,11 @@ import {
   Menu,
   X,
   ChevronRight,
+  Clock,
+  TrendingUp,
+  Bot,
+  CalendarDays,
+  Bell,
 } from "lucide-react";
 import { LiveClock } from "@/components/ui/live-clock";
 
@@ -19,6 +24,11 @@ const navItems = [
   { href: "/employee", label: "Dashboard", icon: LayoutDashboard },
   { href: "/employee/apply-leave", label: "Apply Leave", icon: CalendarPlus },
   { href: "/employee/leaves", label: "Leave History", icon: CalendarCheck },
+  { href: "/employee/attendance", label: "Attendance", icon: Clock },
+  { href: "/employee/performance", label: "Performance", icon: TrendingUp },
+  { href: "/employee/holidays", label: "Holiday Calendar", icon: CalendarDays },
+  { href: "/employee/announcements", label: "Announcements", icon: Bell },
+  { href: "/employee/ai-assistant", label: "AI Assistant", icon: Bot },
   { href: "/employee/profile", label: "My Profile", icon: User },
 ];
 

@@ -162,3 +162,28 @@ export interface PaginatedResponse<T> extends ApiResponse<T[]> {
   limit: number;
   totalPages: number;
 }
+
+
+
+// ==================== Holiday Types ====================
+
+export interface Holiday {
+  id: number;
+  name: string;
+  date: string;
+  type: "national" | "religious" | "company" | "optional";
+  day: string;
+}
+
+// ==================== Announcement Types ====================
+
+export interface Announcement {
+  id: number;
+  title: string;
+  content: string;
+  category: "general" | "policy" | "event" | "celebration" | "important" | "update";
+  date: string;
+  priority: "high" | "medium" | "low";
+  author: string;
+  isActive: boolean;
+}

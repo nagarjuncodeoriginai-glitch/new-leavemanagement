@@ -11,6 +11,10 @@ import {
   Menu,
   X,
   ChevronRight,
+  BarChart3,
+  CalendarDays,
+  Rocket,
+  Bot,
 } from "lucide-react";
 import { LiveClock } from "@/components/ui/live-clock";
 
@@ -18,6 +22,10 @@ const navItems = [
   { href: "/hr", label: "Dashboard", icon: LayoutDashboard },
   { href: "/hr/employees", label: "Employees", icon: Users },
   { href: "/hr/leaves", label: "Leave Management", icon: CalendarCheck },
+  { href: "/hr/reports", label: "Reports & Analytics", icon: BarChart3 },
+  { href: "/hr/holidays", label: "Holiday Calendar", icon: CalendarDays },
+  { href: "/hr/onboarding", label: "Onboarding", icon: Rocket },
+  { href: "/hr/ai-assistant", label: "AI Assistant", icon: Bot },
 ];
 
 export default function HRLayout({ children }: { children: React.ReactNode }) {
