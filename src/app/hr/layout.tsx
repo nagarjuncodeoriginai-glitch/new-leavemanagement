@@ -62,7 +62,9 @@ export default function HRLayout({ children }: { children: React.ReactNode }) {
 
   const handleLogout = async () => {
     await fetch("/api/auth/logout", { method: "POST" });
-    localStorage.clear();
+    localStorage.removeItem("user");
+    localStorage.removeItem("role");
+    localStorage.removeItem("token");
     router.push("/login");
   };
 
