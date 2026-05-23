@@ -8,12 +8,12 @@ import {
   BarChart3, AlertCircle, Navigation, Wifi, WifiOff,
 } from "lucide-react";
 
-// Office Location: Kotla Arcade, Chitradurga, Karnataka
+// Office Location: Kotla Arcade, opposite Gurukula English Medium School, CK Pura, Chitradurga
 const OFFICE_LOCATION = {
-  latitude: 14.2226,
-  longitude: 76.3980,
-  name: "Kotla Arcade, CK Pura, Chitradurga, Karnataka 577501",
-  radiusMeters: 200, // 200m radius for check-in
+  latitude: 14.2250,
+  longitude: 76.4073,
+  name: "Kotla Arcade, opp. Gurukula School, CK Pura, Chitradurga, Karnataka 577501",
+  radiusMeters: 150, // 150m radius for check-in
 };
 
 interface AttendanceRecord {
