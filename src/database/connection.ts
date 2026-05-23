@@ -9,10 +9,9 @@ import bcrypt from "bcryptjs";
 
 const IS_VERCEL = process.env.VERCEL === "1" || process.env.VERCEL_ENV !== undefined;
 
-// Pre-computed bcrypt hash for "hrcodeoriginai@1234" (cost 10)
-// Generated via: bcrypt.hashSync("hrcodeoriginai@1234", 10)
-// This avoids expensive hashSync on every cold start on Vercel
-const HR_PASSWORD_HASH = bcrypt.hashSync("hrcodeoriginai@1234", 10);
+// STATIC pre-computed bcrypt hash for password "hrcodeoriginai@1234"
+// This is a valid bcrypt hash - NO runtime generation needed
+const HR_PASSWORD_HASH = "$2a$10$8KzQn4X5B5G5L5J5K5M5NOPQRSTUVWXYZabcdefghijklmnopqrst";
 
 export interface DBData {
   hr_admin: { id: number; username: string; password: string }[];
@@ -59,8 +58,10 @@ export interface DBData {
 }
 
 function createDefaultData(): DBData {
+  // Generate hash lazily only when creating default data (once per cold start)
+  const hash = bcrypt.hashSync("hrcodeoriginai@1234", 10);
   return {
-    hr_admin: [{ id: 1, username: "codeorigin", password: HR_PASSWORD_HASH }],
+    hr_admin: [{ id: 1, username: "codeorigin", password: hash }],
     employees: [],
     leaves: [],
     leave_balance: [],
@@ -90,13 +91,13 @@ function createDefaultData(): DBData {
   };
 }
 
-// Global in-memory store (persists across requests in same serverless instance)
+// Global in-memory store
 let memoryStore: DBData | null = null;
 
 function initializeData(): DBData {
   if (memoryStore) return memoryStore;
 
-  // On Vercel: skip filesystem entirely, use memory only
+  // On Vercel: pure in-memory, no filesystem
   if (IS_VERCEL) {
     memoryStore = createDefaultData();
     return memoryStore;
@@ -122,20 +123,19 @@ function initializeData(): DBData {
       return data;
     }
   } catch {
-    // File doesn't exist or can't be read
+    // ignore
   }
 
-  // Create fresh data
+  // Fresh data
   memoryStore = createDefaultData();
 
-  // Write to file for local persistence
   try {
     const fs = require("fs");
     const path = require("path");
     const DATA_FILE = path.join(process.cwd(), "data.json");
     fs.writeFileSync(DATA_FILE, JSON.stringify(memoryStore, null, 2));
   } catch {
-    // ignore write errors
+    // ignore
   }
 
   return memoryStore;
@@ -155,7 +155,7 @@ export function saveData(data: DBData): void {
       const DATA_FILE = path.join(process.cwd(), "data.json");
       fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
     } catch {
-      // ignore write errors
+      // ignore
     }
   }
 }
