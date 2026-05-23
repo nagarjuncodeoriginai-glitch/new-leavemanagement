@@ -49,33 +49,25 @@ export default function PerformancePage() {
     loadPerformanceData();
   }, []);
 
-  const loadPerformanceData = () => {
+  const loadPerformanceData = async () => {
     try {
       const userData = localStorage.getItem("user");
       const empId = userData ? JSON.parse(userData).emp_id || "" : "";
 
-      // Load goals assigned by HR
-      const savedGoals = localStorage.getItem("performance_goals");
-      if (savedGoals) {
-        const allGoals: Goal[] = JSON.parse(savedGoals);
+      const res = await fetch("/api/performance");
+      const json = await res.json();
+
+      if (json.success) {
+        const allGoals: Goal[] = json.data.goals || [];
+        const allFeedback: FeedbackItem[] = json.data.feedback || [];
+        const allSkills: SkillRating[] = json.data.skills || [];
+
         setGoals(allGoals.filter(g => g.employeeId === empId));
-      }
-
-      // Load feedback from HR
-      const savedFeedback = localStorage.getItem("performance_feedback");
-      if (savedFeedback) {
-        const allFeedback: FeedbackItem[] = JSON.parse(savedFeedback);
         setFeedbacks(allFeedback.filter(f => f.employeeId === empId));
-      }
-
-      // Load skills from HR
-      const savedSkills = localStorage.getItem("performance_skills");
-      if (savedSkills) {
-        const allSkills: SkillRating[] = JSON.parse(savedSkills);
         setSkillRatings(allSkills.filter(s => s.employeeId === empId));
       }
     } catch {
-      // ignore parse errors
+      // ignore errors
     } finally {
       setLoading(false);
     }
