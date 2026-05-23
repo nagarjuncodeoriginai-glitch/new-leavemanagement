@@ -18,13 +18,13 @@ const OFFICE_LOCATION = {
 
 interface AttendanceRecord {
   date: string;
-  checkIn: string | null;
-  checkOut: string | null;
-  checkInLocation: string | null;
-  checkOutLocation: string | null;
-  status: "present" | "absent" | "late";
+  check_in: string | null;
+  check_out: string | null;
+  check_in_location: string | null;
+  check_out_location: string | null;
+  status: "present" | "late" | "absent";
   hours: number;
-  isAutoCheckin: boolean;
+  is_auto: boolean;
 }
 
 function getDistanceFromOffice(lat: number, lng: number): number {
@@ -40,24 +40,7 @@ function getDistanceFromOffice(lat: number, lng: number): number {
 }
 
 function getStorageKey(): string {
-  const userData = localStorage.getItem("user");
-  const empId = userData ? JSON.parse(userData).emp_id || "unknown" : "unknown";
-  return `attendance_${empId}`;
-}
-
-function loadAttendance(): AttendanceRecord[] {
-  try {
-    const data = localStorage.getItem(getStorageKey());
-    return data ? JSON.parse(data) : [];
-  } catch { return []; }
-}
-
-function saveAttendance(records: AttendanceRecord[]) {
-  localStorage.setItem(getStorageKey(), JSON.stringify(records));
-}
-
-function getTodayStr(): string {
-  return new Date().toISOString().split("T")[0];
+  return "";
 }
 
 export default function AttendancePage() {
@@ -70,10 +53,20 @@ export default function AttendancePage() {
   const [calendarMonth, setCalendarMonth] = useState(new Date().getMonth());
   const [calendarYear, setCalendarYear] = useState(new Date().getFullYear());
 
+  const fetchAttendance = useCallback(async () => {
+    try {
+      const res = await fetch("/api/attendance");
+      const json = await res.json();
+      if (json.success) {
+        setAttendance(json.data || []);
+      }
+    } catch (e) { console.error(e); }
+  }, []);
+
   // Load attendance on mount
   useEffect(() => {
-    setAttendance(loadAttendance());
-  }, []);
+    fetchAttendance();
+  }, [fetchAttendance]);
 
   // Update clock every second
   useEffect(() => {
@@ -108,35 +101,32 @@ export default function AttendancePage() {
     return () => clearInterval(interval);
   }, [checkLocation]);
 
-  // Auto check-in at 10:30 AM if in office
+  // Auto check-in at 10:30 AM if in office (calls API)
   useEffect(() => {
     if (locationStatus !== "in_office") return;
     const now = new Date();
     const hours = now.getHours();
     const minutes = now.getMinutes();
-    const today = getTodayStr();
-    const todayRecord = attendance.find(r => r.date === today);
+    const today = new Date().toISOString().split("T")[0];
+    const todayRec = attendance.find(r => r.date === today);
 
-    if (hours === 10 && minutes >= 30 && minutes <= 35 && !todayRecord) {
-      // Auto check-in
-      const newRecord: AttendanceRecord = {
-        date: today,
-        checkIn: now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-        checkOut: null,
-        checkInLocation: OFFICE_LOCATION.name,
-        checkOutLocation: null,
-        status: "present",
-        hours: 0,
-        isAutoCheckin: true,
-      };
-      const updated = [newRecord, ...attendance];
-      setAttendance(updated);
-      saveAttendance(updated);
+    if (hours === 10 && minutes >= 30 && minutes <= 35 && !todayRec) {
+      fetch("/api/attendance", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "check_in",
+          location: OFFICE_LOCATION.name,
+          latitude: currentLocation?.lat,
+          longitude: currentLocation?.lng,
+        }),
+      }).then(() => fetchAttendance()).catch(console.error);
     }
-  }, [locationStatus, attendance, currentTime]);
+  }, [locationStatus, attendance, currentTime, currentLocation, fetchAttendance]);
 
-  const todayRecord = attendance.find(r => r.date === getTodayStr());
-  const isCheckedIn = todayRecord?.checkIn && !todayRecord?.checkOut;
+  const today = new Date().toISOString().split("T")[0];
+  const todayRecord = attendance.find(r => r.date === today);
+  const isCheckedIn = todayRecord?.check_in && !todayRecord?.check_out;
 
   const handleCheckIn = () => {
     if (!currentLocation) {
@@ -144,72 +134,53 @@ export default function AttendancePage() {
       return;
     }
     setCheckingIn(true);
-    setTimeout(() => {
-      const now = new Date();
-      const today = getTodayStr();
-      const timeStr = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-      const isLate = now.getHours() > 10 || (now.getHours() === 10 && now.getMinutes() > 30);
 
-      const locationName = locationStatus === "in_office"
-        ? OFFICE_LOCATION.name
-        : `Remote - ${distance}m from office (Lat: ${currentLocation.lat.toFixed(4)}, Lng: ${currentLocation.lng.toFixed(4)})`;
+    const locationName = locationStatus === "in_office"
+      ? OFFICE_LOCATION.name
+      : `Remote - ${distance}m from office`;
 
-      const existingIndex = attendance.findIndex(r => r.date === today);
-      let updated: AttendanceRecord[];
-
-      if (existingIndex >= 0) {
-        updated = [...attendance];
-        updated[existingIndex] = { ...updated[existingIndex], checkIn: timeStr, checkInLocation: locationName, status: isLate ? "late" : "present" };
-      } else {
-        const newRecord: AttendanceRecord = {
-          date: today,
-          checkIn: timeStr,
-          checkOut: null,
-          checkInLocation: locationName,
-          checkOutLocation: null,
-          status: isLate ? "late" : "present",
-          hours: 0,
-          isAutoCheckin: false,
-        };
-        updated = [newRecord, ...attendance.filter(r => r.date !== today)];
-      }
-      setAttendance(updated);
-      saveAttendance(updated);
-      setCheckingIn(false);
-    }, 1500);
+    fetch("/api/attendance", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "check_in",
+        location: locationName,
+        latitude: currentLocation.lat,
+        longitude: currentLocation.lng,
+      }),
+    })
+      .then(res => res.json())
+      .then(json => {
+        if (json.success) {
+          fetchAttendance();
+        }
+      })
+      .catch(console.error)
+      .finally(() => setCheckingIn(false));
   };
 
   const handleCheckOut = () => {
-    if (!todayRecord?.checkIn) return;
-    const now = new Date();
-    const timeStr = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     const locationName = currentLocation
       ? (locationStatus === "in_office" ? OFFICE_LOCATION.name : `Remote - ${distance}m from office`)
       : "Location unavailable";
 
-    // Calculate hours
-    const checkInParts = todayRecord.checkIn.match(/(\d+):(\d+)\s*(AM|PM)?/i);
-    let hoursWorked = 0;
-    if (checkInParts) {
-      let h = parseInt(checkInParts[1]);
-      const m = parseInt(checkInParts[2]);
-      const period = checkInParts[3];
-      if (period) {
-        if (period.toUpperCase() === "PM" && h !== 12) h += 12;
-        if (period.toUpperCase() === "AM" && h === 12) h = 0;
-      }
-      const checkInDate = new Date();
-      checkInDate.setHours(h, m, 0);
-      hoursWorked = (now.getTime() - checkInDate.getTime()) / (1000 * 60 * 60);
-    }
-
-    const updated = attendance.map(r =>
-      r.date === getTodayStr()
-        ? { ...r, checkOut: timeStr, checkOutLocation: locationName, hours: Math.max(0, parseFloat(hoursWorked.toFixed(1))) }
-        : r
-    );
-    setAttendance(updated);
-    saveAttendance(updated);
+    fetch("/api/attendance", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "check_out",
+        location: locationName,
+        latitude: currentLocation?.lat,
+        longitude: currentLocation?.lng,
+      }),
+    })
+      .then(res => res.json())
+      .then(json => {
+        if (json.success) {
+          fetchAttendance();
+        }
+      })
+      .catch(console.error);
   };
 
   // Stats
@@ -301,15 +272,15 @@ export default function AttendancePage() {
                   <LogOut className="w-6 h-6" /> Check Out
                 </motion.button>
               )}
-              {todayRecord?.checkIn && (
+              {todayRecord?.check_in && (
                 <p className="text-xs text-emerald-300 flex items-center gap-1">
                   <CheckCircle2 className="w-3.5 h-3.5" />
-                  Checked in at {todayRecord.checkIn}
-                  {todayRecord.isAutoCheckin && " (Auto)"}
+                  Checked in at {todayRecord.check_in}
+                  {todayRecord.is_auto && " (Auto)"}
                 </p>
               )}
-              {todayRecord?.checkOut && (
-                <p className="text-xs text-blue-300">Checked out at {todayRecord.checkOut} ({todayRecord.hours}h)</p>
+              {todayRecord?.check_out && (
+                <p className="text-xs text-blue-300">Checked out at {todayRecord.check_out} ({todayRecord.hours}h)</p>
               )}
             </div>
 
@@ -443,8 +414,8 @@ export default function AttendancePage() {
                       {new Date(record.date).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" })}
                     </p>
                     <p className="text-xs text-slate-500">
-                      {record.checkIn}{record.checkOut ? ` - ${record.checkOut}` : " (active)"}
-                      {record.isAutoCheckin && " [Auto]"}
+                      {record.check_in}{record.check_out ? ` - ${record.check_out}` : " (active)"}
+                      {record.is_auto && " [Auto]"}
                     </p>
                   </div>
                   <div className="text-right flex-shrink-0">

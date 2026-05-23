@@ -84,6 +84,20 @@ export interface DBData {
     author: string;
     isActive: boolean;
   }[];
+  attendance: {
+    id: number;
+    employee_id: number;
+    emp_id: string;
+    full_name: string;
+    date: string;
+    check_in: string | null;
+    check_out: string | null;
+    check_in_location: string | null;
+    check_out_location: string | null;
+    status: "present" | "late" | "absent";
+    hours: number;
+    is_auto: boolean;
+  }[];
 }
 
 // HR Admin password: hrcodeoriginai@1234 (pre-hashed)
@@ -117,6 +131,7 @@ const DEFAULT_DATA: DBData = {
     { id: 16, name: "Raksha Bandhan", date: "2025-08-09", type: "optional", day: "Saturday" },
   ],
   announcements: [],
+  attendance: [],
 };
 
 function initializeData(): DBData {
