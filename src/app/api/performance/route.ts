@@ -5,15 +5,26 @@ import { requireAuth } from "@/lib/auth";
 // GET all performance data (goals, feedback, skills)
 export async function GET() {
   try {
-    await requireAuth("hr");
+    const user = await requireAuth();
     const db = getData();
+
+    let goals = db.performance_goals || [];
+    let feedback = db.performance_feedback || [];
+    let skills = db.performance_skills || [];
+
+    // Employees can only see their own data
+    if (user.role === "employee" && user.emp_id) {
+      goals = goals.filter(g => g.employeeId === user.emp_id);
+      feedback = feedback.filter(f => f.employeeId === user.emp_id);
+      skills = skills.filter(s => s.employeeId === user.emp_id);
+    }
 
     return NextResponse.json({
       success: true,
       data: {
-        goals: db.performance_goals || [],
-        feedback: db.performance_feedback || [],
-        skills: db.performance_skills || [],
+        goals,
+        feedback,
+        skills,
       },
     });
   } catch (error: unknown) {
