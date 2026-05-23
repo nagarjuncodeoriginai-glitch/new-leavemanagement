@@ -30,57 +30,102 @@ const quickPrompts = [
   { icon: HelpCircle, label: "Who is my reporting manager?", category: "Team" },
 ];
 
-const aiResponses: Record<string, { content: string; suggestions: string[] }> = {
-  "how many leaves": {
-    content: "Based on your current balance for **May 2025**:\n\n🟢 **Remaining CL**: 1 day\n🔵 **Total CL**: 2 days/month\n🟡 **Used CL**: 1 day\n\n📌 **Note**: Your leaves reset on the 1st of every month. You have 1 CL remaining that you can use before May 31.\n\nWould you like to apply for leave?",
-    suggestions: ["Apply for leave", "View leave history", "Check next month balance"],
-  },
-  "leave status": {
-    content: "Here's your **Leave Application Status**:\n\n🟡 **Pending** - May 20-21 (Personal work)\n   Applied: May 18 | Awaiting HR review\n\n✅ **Approved** - May 10 (Feeling unwell)\n   Approved by: HR Admin on May 9\n\nYou have 1 pending request. HR typically reviews within 24 hours.",
-    suggestions: ["Cancel pending leave", "Apply new leave", "Contact HR"],
-  },
-  "salary": {
-    content: "💰 **Salary Information**:\n\n• **Pay Date**: Last working day of every month\n• **Next Payment**: May 31, 2025\n• **Mode**: Direct bank transfer\n\n📄 Your salary slip is automatically generated and available in your profile after each pay cycle.\n\n*For salary-related queries, please contact the Finance team.*",
-    suggestions: ["View my profile", "Download payslip", "Tax declaration"],
-  },
-  "leave policy": {
-    content: "📋 **Leave Policy Summary**:\n\n**Casual Leave (CL)**:\n• 2 days per month allocated\n• Does NOT carry forward to next month\n• Reset on 1st of every month\n• Minimum 10 character reason required\n\n**Application Rules**:\n• Apply at least 1 day in advance (planned)\n• Cannot apply for past dates\n• HR reviews within 24 hours\n• Maximum consecutive: 2 days\n\n**Need more details?** Ask me about specific scenarios!",
-    suggestions: ["Apply for leave", "Emergency leave process", "Holiday calendar"],
-  },
-  "office timings": {
-    content: "🏢 **Office Timings & Work Schedule**:\n\n⏰ **Standard Shift**: 9:00 AM - 6:00 PM\n🍽️ **Lunch Break**: 1:00 PM - 2:00 PM\n📅 **Working Days**: Monday - Friday\n🏠 **Work From Home**: As per manager approval\n\n**Flex hours available**: You can adjust ±1 hour with prior manager approval.\n\n*Your specific shift timing is listed in your profile.*",
-    suggestions: ["Check my shift", "Request WFH", "View holidays"],
-  },
-  "wellness": {
-    content: "💚 **Employee Wellness Benefits**:\n\n🧘 **Mental Health**\n• Free counseling sessions (4/month)\n• Meditation app subscription\n\n🏋️ **Physical Health**\n• Gym membership reimbursement (₹2000/month)\n• Annual health checkup (covered)\n\n🎯 **Work-Life Balance**\n• Flexible work hours\n• Birthday leave (1 day)\n• Wellness Wednesday (early close at 4 PM)\n\nWant to enroll in any program?",
-    suggestions: ["Enroll in gym benefit", "Book counseling", "View all benefits"],
-  },
-  "apply for leave": {
-    content: "📝 **How to Apply for Leave**:\n\n**Step 1**: Go to 'Apply Leave' from sidebar\n**Step 2**: Select start and end date\n**Step 3**: The system calculates days automatically\n**Step 4**: Write your reason (min 10 characters)\n**Step 5**: Click 'Submit Application'\n\n⚡ **Quick tip**: You can also use the 'Quick Apply' button in the sidebar for faster access!\n\nHR will review within 24 hours and you'll see the status update.",
-    suggestions: ["Apply now", "Check my balance", "View leave history"],
-  },
-  "manager": {
-    content: "👤 **Your Reporting Structure**:\n\n• **Reporting Manager**: Priya Verma\n• **Department**: Engineering\n• **Team Size**: 3 members\n\n📧 For escalations, reach out to your manager directly or contact HR.\n\n*This information is based on your employee profile.*",
-    suggestions: ["View team members", "Contact HR", "Update profile"],
-  },
-  "default": {
-    content: "I'm here to help! As your **AI Employee Assistant**, I can answer questions about:\n\n• 📅 **Leave** - Balance, apply, status, policy\n• 💰 **Payroll** - Salary dates, payslips, tax\n• 🏢 **Workplace** - Timings, policies, facilities\n• 💚 **Benefits** - Wellness, insurance, perks\n• 👥 **Team** - Manager, colleagues, structure\n• 📋 **Processes** - How to apply, request, report\n\nWhat would you like to know?",
-    suggestions: ["Leave balance", "Office timings", "Leave policy"],
-  },
-};
-
-
-function getAIResponse(query: string): { content: string; suggestions: string[] } {
+// Fetches real data from API and generates responses for the employee
+async function getAIResponse(query: string): Promise<{ content: string; suggestions: string[] }> {
   const lower = query.toLowerCase();
-  if (lower.includes("leave") && (lower.includes("how many") || lower.includes("balance") || lower.includes("left"))) return aiResponses["how many leaves"];
-  if (lower.includes("status") || lower.includes("check my leave")) return aiResponses["leave status"];
-  if (lower.includes("salary") || lower.includes("pay") || lower.includes("payslip")) return aiResponses["salary"];
-  if (lower.includes("policy") || lower.includes("rules")) return aiResponses["leave policy"];
-  if (lower.includes("timing") || lower.includes("office") || lower.includes("shift") || lower.includes("schedule")) return aiResponses["office timings"];
-  if (lower.includes("wellness") || lower.includes("benefit") || lower.includes("health") || lower.includes("gym")) return aiResponses["wellness"];
-  if (lower.includes("apply") || lower.includes("how to")) return aiResponses["apply for leave"];
-  if (lower.includes("manager") || lower.includes("reporting") || lower.includes("team")) return aiResponses["manager"];
-  return aiResponses["default"];
+
+  try {
+    if (lower.includes("leave") && (lower.includes("how many") || lower.includes("balance") || lower.includes("left") || lower.includes("remaining"))) {
+      const res = await fetch("/api/dashboard/employee");
+      const json = await res.json();
+      const d = json.data;
+      if (!d) return { content: "Unable to fetch leave balance. Please try again.", suggestions: ["Try again", "Leave policy"] };
+      const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+      const monthName = months[(d.leaveBalance?.month || 1) - 1];
+      return {
+        content: `**Your Leave Balance (${monthName} ${d.leaveBalance?.year || ""}):**\n\n• Remaining CL: **${d.leaveBalance?.remaining_cl ?? 2}**\n• Total CL: **${d.leaveBalance?.total_cl || 2}** days/month\n• Used CL: **${d.leaveBalance?.used_cl || 0}**\n${d.pendingLeaves ? `• Pending Requests: **${d.pendingLeaves}**` : ""}\n\nLeaves reset on the 1st of every month and do NOT carry forward.`,
+        suggestions: ["Apply for leave", "Leave history", "Leave policy"],
+      };
+    }
+
+    if (lower.includes("status") || lower.includes("check my leave") || lower.includes("history")) {
+      const res = await fetch("/api/leaves?limit=5");
+      const json = await res.json();
+      const leaves = json.data || [];
+      if (leaves.length === 0) return { content: "You have no leave applications yet. Apply for leave when you need time off.", suggestions: ["Apply for leave", "Leave balance", "Leave policy"] };
+      const list = leaves.map((l: any) => {
+        const status = l.status === "approved" ? "✅ Approved" : l.status === "rejected" ? "❌ Rejected" : "⏳ Pending";
+        return `• ${status} - ${new Date(l.start_date).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}${l.start_date !== l.end_date ? ` to ${new Date(l.end_date).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}` : ""}\n  Reason: ${l.reason}`;
+      }).join("\n\n");
+      return { content: `**Your Recent Leave Applications:**\n\n${list}`, suggestions: ["Apply for leave", "Leave balance", "Leave policy"] };
+    }
+
+    if (lower.includes("policy") || lower.includes("rules")) {
+      return {
+        content: "**Leave Policy:**\n\n• 2 Casual Leaves (CL) per month\n• Leaves do NOT carry forward to next month\n• Reset on 1st of every month\n• Minimum 10 character reason required\n• Apply at least 1 day in advance\n• Cannot apply for past dates\n• HR reviews and approves/rejects",
+        suggestions: ["Leave balance", "Apply for leave", "Office timings"],
+      };
+    }
+
+    if (lower.includes("apply") || lower.includes("how to")) {
+      return {
+        content: "**How to Apply for Leave:**\n\n1. Go to **Apply Leave** from the sidebar\n2. Select start date and end date\n3. Write your reason (min 10 characters)\n4. Click **Submit Application**\n\nHR will review your request. You can check status in Leave History.",
+        suggestions: ["Apply now", "Leave balance", "Leave policy"],
+      };
+    }
+
+    if (lower.includes("timing") || lower.includes("office") || lower.includes("shift") || lower.includes("schedule")) {
+      // Fetch profile for shift timing
+      const userData = localStorage.getItem("user");
+      const userId = userData ? JSON.parse(userData).id : null;
+      let shiftInfo = "9:00 AM - 6:00 PM (default)";
+      if (userId) {
+        const res = await fetch(`/api/employees/${userId}`);
+        const json = await res.json();
+        if (json.success && json.data?.shift_timing) shiftInfo = json.data.shift_timing;
+      }
+      return {
+        content: `**Office Timings:**\n\n• Your Shift: **${shiftInfo}**\n• Working Days: Monday - Friday\n• Office: Kotla Arcade, CK Pura, Chitradurga, Karnataka 577501\n• Attendance: Auto check-in at 10:30 AM if in office GPS range`,
+        suggestions: ["Leave balance", "My profile", "Leave policy"],
+      };
+    }
+
+    if (lower.includes("manager") || lower.includes("reporting") || lower.includes("team")) {
+      const userData = localStorage.getItem("user");
+      const userId = userData ? JSON.parse(userData).id : null;
+      if (userId) {
+        const res = await fetch(`/api/employees/${userId}`);
+        const json = await res.json();
+        if (json.success) {
+          const emp = json.data;
+          return {
+            content: `**Your Info:**\n\n• Name: **${emp.full_name}**\n• Department: **${emp.department}**\n• Designation: **${emp.designation}**\n• Manager: **${emp.manager_name || "Not assigned"}**\n• Work Location: **${emp.work_location || "Office"}**`,
+            suggestions: ["My profile", "Leave balance", "Office timings"],
+          };
+        }
+      }
+      return { content: "Unable to fetch your profile info. Check My Profile page for details.", suggestions: ["My profile", "Leave balance"] };
+    }
+
+    if (lower.includes("salary") || lower.includes("pay")) {
+      return {
+        content: "**Salary Information:**\n\n• Pay Date: Last working day of every month\n• Mode: Direct bank transfer\n• View details in My Profile page\n\nFor salary-related queries, contact HR or Finance team.",
+        suggestions: ["My profile", "Leave balance", "Office timings"],
+      };
+    }
+
+    // Default - fetch live balance
+    const res = await fetch("/api/dashboard/employee");
+    const json = await res.json();
+    const d = json.data;
+    const balanceText = d ? `\n\nYour balance: ${d.leaveBalance?.remaining_cl ?? 2} CL remaining this month.` : "";
+    return {
+      content: `I can help you with:${balanceText}\n\n• **Leave** - Balance, apply, status, policy\n• **Profile** - Your info, manager, shift\n• **Office** - Timings, location, attendance\n• **Salary** - Pay dates, bank info\n\nWhat would you like to know?`,
+      suggestions: ["Leave balance", "Leave policy", "Office timings"],
+    };
+  } catch (error) {
+    return { content: "I encountered an error. Please try again.", suggestions: ["Try again", "Leave policy", "Office timings"] };
+  }
 }
 
 export default function EmployeeAIAssistant() {
@@ -88,7 +133,7 @@ export default function EmployeeAIAssistant() {
     {
       id: "welcome",
       role: "assistant",
-      content: "Hi there! 👋 I'm your **Personal HR Assistant**. I can help you with leave balances, policies, salary info, benefits, and much more.\n\nHow can I help you today?",
+      content: "Hi! I'm your **Personal HR Assistant**. I can help you with leave balances, policies, and more using your real data.\n\nHow can I help you today?",
       timestamp: new Date(),
       suggestions: ["Leave balance", "Leave policy", "Office timings", "Apply for leave"],
     },
@@ -108,9 +153,7 @@ export default function EmployeeAIAssistant() {
     setInput("");
     setIsTyping(true);
 
-    await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 600));
-
-    const response = getAIResponse(text);
+    const response = await getAIResponse(text);
     const aiMsg: Message = { id: (Date.now() + 1).toString(), role: "assistant", content: response.content, timestamp: new Date(), suggestions: response.suggestions };
     setMessages(prev => [...prev, aiMsg]);
     setIsTyping(false);

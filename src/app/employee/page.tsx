@@ -109,26 +109,31 @@ export default function EmployeeDashboard() {
     setAiChat(prev => [...prev, { role: "user", text: userMsg }]);
     setAiInput("");
 
-    setTimeout(() => {
-      let response = "";
-      const lower = userMsg.toLowerCase();
-      if (lower.includes("balance") || lower.includes("remaining") || lower.includes("how many")) {
-        response = `You have ${data?.leaveBalance?.remaining_cl ?? 2} CL remaining out of ${data?.leaveBalance?.total_cl || 2} for this month. ${data?.pendingLeaves ? `You also have ${data.pendingLeaves} request(s) pending approval.` : ""}`;
-      } else if (lower.includes("apply") || lower.includes("request")) {
-        response = "To apply for leave: Go to 'Apply Leave' → Select dates → Write your reason (min 10 chars) → Submit. HR will review and approve/reject. Tip: Apply early for better chances!";
-      } else if (lower.includes("policy") || lower.includes("rules") || lower.includes("carry")) {
-        response = "Leave Policy: You get 2 Casual Leaves (CL) per month. Important: Unused leaves do NOT carry forward — they expire at month end. Plan wisely!";
-      } else if (lower.includes("status") || lower.includes("pending") || lower.includes("approved")) {
-        const pending = data?.pendingLeaves || 0;
-        const approved = data?.approvedLeaves || 0;
-        response = `Your leave status: ${pending} pending, ${approved} approved this year. Check 'Leave History' for full details.`;
-      } else if (lower.includes("hi") || lower.includes("hello") || lower.includes("hey")) {
-        response = `Hello ${userName.split(" ")[0]}! How can I help you today? I can tell you about your leave balance, how to apply, or our leave policy.`;
-      } else {
-        response = "I can help with: checking your leave balance, how to apply for leave, leave policy & rules, and your application status. What would you like to know?";
+    const fetchResponse = async () => {
+      try {
+        const lower = userMsg.toLowerCase();
+        if (lower.includes("balance") || lower.includes("remaining") || lower.includes("how many")) {
+          const res = await fetch("/api/dashboard/employee");
+          const json = await res.json();
+          const d = json.data;
+          setAiChat(prev => [...prev, { role: "ai", text: d ? `You have ${d.leaveBalance?.remaining_cl ?? 2} CL remaining out of ${d.leaveBalance?.total_cl || 2} for this month.${d.pendingLeaves ? ` ${d.pendingLeaves} request(s) pending.` : ""}` : "Unable to fetch balance." }]);
+        } else if (lower.includes("apply") || lower.includes("request")) {
+          setAiChat(prev => [...prev, { role: "ai", text: "To apply: Go to 'Apply Leave' → Select dates → Write reason (min 10 chars) → Submit. HR will review and approve/reject." }]);
+        } else if (lower.includes("policy") || lower.includes("rules") || lower.includes("carry")) {
+          setAiChat(prev => [...prev, { role: "ai", text: "Leave Policy: 2 CL per month. Unused leaves do NOT carry forward — they expire at month end. Plan wisely!" }]);
+        } else if (lower.includes("status") || lower.includes("pending") || lower.includes("approved")) {
+          const res = await fetch("/api/dashboard/employee");
+          const json = await res.json();
+          const d = json.data;
+          setAiChat(prev => [...prev, { role: "ai", text: d ? `Status: ${d.pendingLeaves || 0} pending, ${d.approvedLeaves || 0} approved this year.` : "Unable to fetch status." }]);
+        } else {
+          setAiChat(prev => [...prev, { role: "ai", text: "I can help with: leave balance, how to apply, leave policy, and application status. What would you like to know?" }]);
+        }
+      } catch {
+        setAiChat(prev => [...prev, { role: "ai", text: "Error fetching data. Please try again." }]);
       }
-      setAiChat(prev => [...prev, { role: "ai", text: response }]);
-    }, 700);
+    };
+    fetchResponse();
   };
 
   if (loading) {

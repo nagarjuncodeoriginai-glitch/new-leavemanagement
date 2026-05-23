@@ -101,26 +101,37 @@ export default function HRDashboard() {
     setAiChat(prev => [...prev, { role: "user", text: userMsg }]);
     setAiInput("");
 
-    // AI responses based on keywords
-    setTimeout(() => {
-      let response = "";
-      const lower = userMsg.toLowerCase();
-      if (lower.includes("leave") && lower.includes("policy")) {
-        response = "Our leave policy allocates 2 Casual Leaves (CL) per month per employee. Unused leaves do NOT carry forward - they expire at month end. HR can approve/reject via the Leave Management page.";
-      } else if (lower.includes("add") && lower.includes("employee")) {
-        response = "To add a new employee: Go to Employees page → Click 'Add Employee' → Fill in details (ID, name, department, credentials) → Submit. The employee can then login with those credentials.";
-      } else if (lower.includes("pending")) {
-        response = `You currently have ${data?.pendingLeaves || 0} pending leave request(s). Go to Leave Management to approve or reject them.`;
-      } else if (lower.includes("department")) {
-        const depts = data?.departmentWise?.map(d => `${d.department}: ${d.count}`).join(", ") || "No data yet";
-        response = `Department distribution: ${depts}. You can add employees to departments via the Employees page.`;
-      } else if (lower.includes("how many") || lower.includes("total")) {
-        response = `You have ${data?.totalEmployees || 0} total employees, ${data?.activeEmployees || 0} active. ${data?.pendingLeaves || 0} leave requests are pending your review.`;
-      } else {
-        response = "I can help with: leave policies, adding employees, viewing pending requests, department info, and HR best practices. Try asking about any of these topics!";
+    // Fetch real data for AI response
+    const lower = userMsg.toLowerCase();
+    const fetchResponse = async () => {
+      try {
+        if (lower.includes("leave") && lower.includes("policy")) {
+          setAiChat(prev => [...prev, { role: "ai", text: "Leave Policy: 2 CL per month per employee. Unused leaves do NOT carry forward. HR can approve/reject via Leave Management page. Employees must provide min 10-char reason." }]);
+        } else if (lower.includes("add") && lower.includes("employee")) {
+          setAiChat(prev => [...prev, { role: "ai", text: "To add a new employee: Go to Employees page → Click 'Add Employee' → Fill in details (ID, name, department, credentials) → Submit. The employee can then login." }]);
+        } else if (lower.includes("pending")) {
+          const res = await fetch("/api/leaves?status=pending&limit=5");
+          const json = await res.json();
+          const count = json.total || 0;
+          setAiChat(prev => [...prev, { role: "ai", text: `You have ${count} pending leave request(s). Go to Leave Management to approve or reject them.` }]);
+        } else if (lower.includes("department")) {
+          const res = await fetch("/api/employees/departments");
+          const json = await res.json();
+          const depts = (json.data || []).map((d: any) => `${d.department}: ${d.count}`).join(", ") || "No data yet";
+          setAiChat(prev => [...prev, { role: "ai", text: `Department distribution: ${depts}` }]);
+        } else if (lower.includes("how many") || lower.includes("total")) {
+          const res = await fetch("/api/dashboard/hr");
+          const json = await res.json();
+          const d = json.data;
+          setAiChat(prev => [...prev, { role: "ai", text: d ? `You have ${d.totalEmployees} total employees, ${d.activeEmployees} active. ${d.pendingLeaves} leave requests pending.` : "Unable to fetch data." }]);
+        } else {
+          setAiChat(prev => [...prev, { role: "ai", text: "I can help with: leave policies, pending requests, adding employees, department info, and total headcount. Ask me anything!" }]);
+        }
+      } catch {
+        setAiChat(prev => [...prev, { role: "ai", text: "Error fetching data. Please try again." }]);
       }
-      setAiChat(prev => [...prev, { role: "ai", text: response }]);
-    }, 800);
+    };
+    fetchResponse();
   };
 
   if (loading) {

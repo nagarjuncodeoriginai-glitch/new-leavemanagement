@@ -27,41 +27,75 @@ const quickPrompts = [
   { icon: BarChart3, label: "Department headcount breakdown", category: "Analytics" },
 ];
 
-const aiResponses: Record<string, { content: string; suggestions: string[] }> = {
-  "who is on leave today": {
-    content: "Based on current records, **2 employees** are on approved leave today:\n\n1. **Priya Verma** (Engineering) - Casual Leave (May 15)\n2. **Rahul Sharma** (Engineering) - Leave pending approval (May 20-21)\n\nAll other team members are available. Would you like me to send a team availability report?",
-    suggestions: ["Send availability report", "Check tomorrow's schedule", "View leave calendar"],
-  },
-  "show me workforce analytics": {
-    content: "Here's your **Workforce Analytics Summary**:\n\n📊 **Headcount**: 5 total employees\n✅ **Active**: 4 (80%)\n⏳ **On Probation**: 1 (20%)\n\n**Department Distribution**:\n- Engineering: 2 employees\n- Design: 1 employee\n- Marketing: 1 employee\n- Sales: 1 employee\n\n**Key Insight**: Engineering team has the highest headcount. Consider hiring for Design to balance workload.",
-    suggestions: ["Hiring recommendations", "Attrition risk analysis", "Salary benchmarking"],
-  },
-  "pending leave approvals summary": {
-    content: "You have **2 pending leave requests** requiring attention:\n\n🟡 **Rahul Sharma** - CL (May 20-21)\n   Reason: Personal work - bank and government office visit\n   Applied: May 18\n\n🟡 **Amit Kumar** - CL (May 22-23)\n   Reason: Family function - sister wedding ceremony\n   Applied: May 19\n\n⚡ **Recommendation**: Both requests are within policy limits. Suggest batch-approving to improve response time metrics.",
-    suggestions: ["Approve all pending", "View leave balance", "Check team coverage"],
-  },
-  "generate attendance report": {
-    content: "📋 **Attendance Report - May 2025**\n\n| Metric | Value |\n|--------|-------|\n| Working Days | 22 |\n| Avg. Attendance | 95.2% |\n| Late Check-ins | 3 instances |\n| Early Departures | 1 instance |\n\n**Top Performers (100% attendance)**:\n- Vikram Singh\n- Sneha Patel\n\n**Note**: Overall attendance is above target (90%). No action needed.",
-    suggestions: ["Export as PDF", "Compare with last month", "Flag attendance issues"],
-  },
-  "default": {
-    content: "I understand your query. Let me analyze our HR data to provide you with the most relevant insights.\n\nBased on the current workforce data, here's what I can help you with:\n\n• **Leave Management** - Track, approve, and analyze leave patterns\n• **Workforce Analytics** - Headcount, department distribution, trends\n• **Compliance** - Policy adherence, document verification status\n• **Reports** - Generate custom reports on any HR metric\n\nCould you be more specific about what you'd like to know?",
-    suggestions: ["View pending tasks", "Employee directory", "Generate report"],
-  },
-};
-
-
-function getAIResponse(query: string): { content: string; suggestions: string[] } {
+// Fetches real data from API and generates responses
+async function getAIResponse(query: string): Promise<{ content: string; suggestions: string[] }> {
   const lower = query.toLowerCase();
-  for (const key of Object.keys(aiResponses)) {
-    if (key !== "default" && lower.includes(key)) {
-      return aiResponses[key];
+
+  try {
+    if (lower.includes("leave") && (lower.includes("today") || lower.includes("who"))) {
+      const res = await fetch("/api/leaves?status=approved&limit=50");
+      const json = await res.json();
+      const today = new Date().toISOString().split("T")[0];
+      const onLeaveToday = (json.data || []).filter((l: any) => l.start_date <= today && l.end_date >= today);
+      if (onLeaveToday.length === 0) {
+        return { content: "No employees are on approved leave today. All team members are available.", suggestions: ["Pending approvals", "Workforce analytics", "Leave policy"] };
+      }
+      const list = onLeaveToday.map((l: any, i: number) => `${i + 1}. **${l.employee_name}** (${l.emp_id}) - CL (${new Date(l.start_date).toLocaleDateString("en-IN", { day: "numeric", month: "short" })} - ${new Date(l.end_date).toLocaleDateString("en-IN", { day: "numeric", month: "short" })})`).join("\n");
+      return { content: `**${onLeaveToday.length} employee(s)** on approved leave today:\n\n${list}`, suggestions: ["Pending approvals", "Workforce analytics", "Department breakdown"] };
     }
+
+    if (lower.includes("pending") || lower.includes("approval")) {
+      const res = await fetch("/api/leaves?status=pending&limit=50");
+      const json = await res.json();
+      const pending = json.data || [];
+      if (pending.length === 0) {
+        return { content: "No pending leave requests! All leave applications have been reviewed.", suggestions: ["Who is on leave today?", "Workforce analytics", "Generate report"] };
+      }
+      const list = pending.map((l: any) => `• **${l.employee_name}** (${l.emp_id}) - ${new Date(l.start_date).toLocaleDateString("en-IN", { day: "numeric", month: "short" })} to ${new Date(l.end_date).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}\n  Reason: ${l.reason}`).join("\n\n");
+      return { content: `You have **${pending.length} pending leave request(s)**:\n\n${list}\n\nGo to Leave Management to approve or reject them.`, suggestions: ["Go to Leave Management", "Workforce analytics", "Who is on leave today?"] };
+    }
+
+    if (lower.includes("analytics") || lower.includes("workforce") || lower.includes("headcount")) {
+      const res = await fetch("/api/dashboard/hr");
+      const json = await res.json();
+      const d = json.data;
+      if (!d) return { content: "Unable to fetch workforce data. Please try again.", suggestions: ["Try again", "Pending approvals"] };
+      const depts = (d.departmentWise || []).map((dept: any) => `- ${dept.department}: ${dept.count} employee(s)`).join("\n");
+      return {
+        content: `**Workforce Analytics Summary:**\n\n• Total Employees: **${d.totalEmployees}**\n• Active: **${d.activeEmployees}**\n• Pending Leaves: **${d.pendingLeaves}**\n• Approved This Month: **${d.approvedLeavesThisMonth}**\n\n**Department Distribution:**\n${depts || "No departments yet - add employees to see distribution."}`,
+        suggestions: ["Pending approvals", "Who is on leave today?", "Department breakdown"],
+      };
+    }
+
+    if (lower.includes("department")) {
+      const res = await fetch("/api/employees/departments");
+      const json = await res.json();
+      const depts = json.data || [];
+      if (depts.length === 0) return { content: "No departments found. Add employees to see department distribution.", suggestions: ["Add employee", "Workforce analytics"] };
+      const list = depts.map((d: any) => `• **${d.department}**: ${d.count} employee(s)`).join("\n");
+      return { content: `**Department Breakdown:**\n\n${list}\n\nTotal: ${depts.reduce((s: number, d: any) => s + d.count, 0)} employees across ${depts.length} departments.`, suggestions: ["Workforce analytics", "Pending approvals"] };
+    }
+
+    if (lower.includes("add") && lower.includes("employee")) {
+      return { content: "To add a new employee:\n\n1. Go to **Employees** page\n2. Click **Add Employee** button\n3. Fill in details (ID, name, department, credentials)\n4. Submit the form\n\nThe employee can then login with those credentials.", suggestions: ["Go to Employees", "Workforce analytics", "Leave policy"] };
+    }
+
+    if (lower.includes("policy") || lower.includes("rules")) {
+      return { content: "**Leave Policy:**\n\n• 2 Casual Leaves (CL) per month per employee\n• Leaves do NOT carry forward - they expire at month end\n• Employees must apply at least 1 day in advance\n• HR can approve/reject from Leave Management page\n• Minimum 10 character reason required\n• Cannot apply for past dates", suggestions: ["Pending approvals", "Who is on leave today?", "Workforce analytics"] };
+    }
+
+    // Default - fetch live stats
+    const res = await fetch("/api/dashboard/hr");
+    const json = await res.json();
+    const d = json.data;
+    const statsText = d ? `\n\nCurrent stats: ${d.totalEmployees} employees, ${d.pendingLeaves} pending leaves, ${d.approvedLeavesThisMonth} approved this month.` : "";
+    return {
+      content: `I can help you with real-time HR data:${statsText}\n\n• **Leave Management** - Track, approve, and analyze leave requests\n• **Workforce Analytics** - Headcount, department distribution\n• **Employee Info** - How to add/manage employees\n• **Policy Info** - Leave rules and guidelines\n\nWhat would you like to know?`,
+      suggestions: ["Who is on leave today?", "Pending approvals", "Workforce analytics"],
+    };
+  } catch (error) {
+    return { content: "I encountered an error fetching data. Please try again or check your connection.", suggestions: ["Try again", "Leave policy", "How to add employee"] };
   }
-  if (lower.includes("leave")) return aiResponses["pending leave approvals summary"];
-  if (lower.includes("analytics") || lower.includes("report")) return aiResponses["show me workforce analytics"];
-  if (lower.includes("attendance")) return aiResponses["generate attendance report"];
-  return aiResponses["default"];
 }
 
 export default function AIAssistantPage() {
@@ -96,10 +130,7 @@ export default function AIAssistantPage() {
     setInput("");
     setIsTyping(true);
 
-    // Simulate AI thinking delay
-    await new Promise(resolve => setTimeout(resolve, 1200 + Math.random() * 800));
-
-    const response = getAIResponse(text);
+    const response = await getAIResponse(text);
     const aiMsg: Message = {
       id: (Date.now() + 1).toString(),
       role: "assistant",
