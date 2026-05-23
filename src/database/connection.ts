@@ -1,7 +1,9 @@
 /**
- * JSON File-Based Storage
- * No database required! Data is stored in a local JSON file.
- * This works immediately without any setup.
+ * Storage Layer - Works on both local dev AND Vercel serverless
+ * 
+ * On local: Uses file system (data.json) for persistence
+ * On Vercel: Uses in-memory store (data persists within same instance,
+ *            resets on cold start - for full persistence use a database)
  */
 
 import fs from "fs";
@@ -9,6 +11,7 @@ import path from "path";
 import bcrypt from "bcryptjs";
 
 const DATA_FILE = path.join(process.cwd(), "data.json");
+const IS_VERCEL = process.env.VERCEL === "1" || process.env.VERCEL_ENV !== undefined;
 
 export interface DBData {
   hr_admin: {
@@ -126,13 +129,16 @@ export interface DBData {
   }[];
 }
 
-// HR Admin password: hrcodeoriginai@1234 (pre-hashed)
+// HR Admin password: hrcodeoriginai@1234
+// Generate fresh hash at module load to ensure it always works
+const HR_ADMIN_PASSWORD_HASH = bcrypt.hashSync("hrcodeoriginai@1234", 10);
+
 const DEFAULT_DATA: DBData = {
   hr_admin: [
     {
       id: 1,
       username: "codeorigin",
-      password: "$2a$12$LQv3c1yqBo9SkvXS7QTJPOoGz2EzfLzG0M8LcHqOqK5F5GqHu5Vqa",
+      password: HR_ADMIN_PASSWORD_HASH,
     },
   ],
   employees: [],
@@ -163,7 +169,18 @@ const DEFAULT_DATA: DBData = {
   performance_skills: [],
 };
 
+// Global in-memory store for Vercel (persists across requests in same instance)
+let memoryStore: DBData | null = null;
+
+function getDefaultData(): DBData {
+  return JSON.parse(JSON.stringify(DEFAULT_DATA));
+}
+
 function initializeData(): DBData {
+  // If we have in-memory data, use it (works on Vercel between requests in same instance)
+  if (memoryStore) return memoryStore;
+
+  // Try reading from file system (works locally, and on Vercel for initial read)
   try {
     if (fs.existsSync(DATA_FILE)) {
       const raw = fs.readFileSync(DATA_FILE, "utf-8");
@@ -173,25 +190,33 @@ function initializeData(): DBData {
       if (!data.performance_goals) data.performance_goals = [];
       if (!data.performance_feedback) data.performance_feedback = [];
       if (!data.performance_skills) data.performance_skills = [];
-      // Migrate leaves to include cancelled_at field
       if (data.leaves && data.leaves.length > 0) {
         data.leaves = data.leaves.map((l) => ({
           ...l,
           cancelled_at: l.cancelled_at ?? null,
         }));
       }
+      memoryStore = data;
       return data;
     }
   } catch {
-    // If file is corrupted, recreate it
+    // File doesn't exist or can't be read (normal on Vercel)
   }
 
-  // Generate fresh hash for HR admin password
-  const hashedPassword = bcrypt.hashSync("hrcodeoriginai@1234", 12);
-  DEFAULT_DATA.hr_admin[0].password = hashedPassword;
+  // Create fresh data
+  const freshData = getDefaultData();
+  memoryStore = freshData;
 
-  fs.writeFileSync(DATA_FILE, JSON.stringify(DEFAULT_DATA, null, 2));
-  return DEFAULT_DATA;
+  // Try to write to file (works locally, fails silently on Vercel)
+  try {
+    if (!IS_VERCEL) {
+      fs.writeFileSync(DATA_FILE, JSON.stringify(freshData, null, 2));
+    }
+  } catch {
+    // Can't write on Vercel - that's fine, we use memory
+  }
+
+  return freshData;
 }
 
 export function getData(): DBData {
@@ -199,7 +224,17 @@ export function getData(): DBData {
 }
 
 export function saveData(data: DBData): void {
-  fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
+  // Always update memory store
+  memoryStore = data;
+
+  // Try to persist to file (works locally, fails silently on Vercel)
+  try {
+    if (!IS_VERCEL) {
+      fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
+    }
+  } catch {
+    // On Vercel, data stays in memory only (persists within same instance)
+  }
 }
 
 export function getNextId(items: { id: number }[]): number {
