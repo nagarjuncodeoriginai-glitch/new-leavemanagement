@@ -5,13 +5,6 @@ import { motion } from "framer-motion";
 import { CalendarDays, Clock, CheckCircle, XCircle, Ban, X } from "lucide-react";
 import { Leave } from "@/types";
 
-const leaveTypeLabels: Record<string, { label: string; color: string }> = {
-  CL: { label: "Casual Leave", color: "bg-blue-50 text-blue-700" },
-  SL: { label: "Sick Leave", color: "bg-red-50 text-red-700" },
-  EL: { label: "Earned Leave", color: "bg-purple-50 text-purple-700" },
-  WFH: { label: "Work From Home", color: "bg-emerald-50 text-emerald-700" },
-};
-
 export default function EmployeeLeavesPage() {
   const [leaves, setLeaves] = useState<Leave[]>([]);
   const [loading, setLoading] = useState(true);
@@ -42,9 +35,7 @@ export default function EmployeeLeavesPage() {
     }
   }, [page, statusFilter]);
 
-  useEffect(() => {
-    fetchLeaves();
-  }, [fetchLeaves]);
+  useEffect(() => { fetchLeaves(); }, [fetchLeaves]);
 
   const cancelLeave = async (leaveId: number) => {
     setCancellingId(leaveId);
@@ -56,7 +47,6 @@ export default function EmployeeLeavesPage() {
       });
       const json = await res.json();
       if (json.success) {
-        // Update locally
         setLeaves((prev) =>
           prev.map((l) => (l.id === leaveId ? { ...l, status: "cancelled" as const } : l))
         );
@@ -68,6 +58,7 @@ export default function EmployeeLeavesPage() {
       setCancelConfirm(null);
     }
   };
+
 
   return (
     <div className="space-y-6">
@@ -99,6 +90,7 @@ export default function EmployeeLeavesPage() {
         ))}
       </div>
 
+
       {/* Leaves List */}
       <div className="bg-white rounded-xl border border-slate-200/50 overflow-hidden">
         {loading ? (
@@ -113,95 +105,87 @@ export default function EmployeeLeavesPage() {
           </div>
         ) : (
           <div className="divide-y divide-slate-100">
-            {leaves.map((leave, i) => {
-              const typeInfo = leaveTypeLabels[leave.leave_type] || { label: leave.leave_type, color: "bg-slate-50 text-slate-700" };
-              return (
-                <motion.div
-                  key={leave.id}
-                  className="p-4 sm:p-5 hover:bg-slate-50/50 transition-colors"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.05 }}
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex items-start gap-4">
-                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                        leave.status === "approved" ? "bg-emerald-50" :
-                        leave.status === "rejected" ? "bg-red-50" :
-                        leave.status === "cancelled" ? "bg-slate-100" : "bg-amber-50"
-                      }`}>
-                        {leave.status === "approved" ? <CheckCircle className="w-5 h-5 text-emerald-600" /> :
-                         leave.status === "rejected" ? <XCircle className="w-5 h-5 text-red-600" /> :
-                         leave.status === "cancelled" ? <Ban className="w-5 h-5 text-slate-400" /> :
-                         <Clock className="w-5 h-5 text-amber-600" />}
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <p className="text-sm font-medium text-slate-900">
-                            {typeInfo.label}
-                          </p>
-                          <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${typeInfo.color}`}>
-                            {leave.leave_type}
-                          </span>
-                        </div>
-                        <p className="text-sm text-slate-600 mt-0.5">
-                          {new Date(leave.start_date).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}
-                          {leave.start_date !== leave.end_date && (
-                            <> — {new Date(leave.end_date).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}</>
-                          )}
-                        </p>
-                        <p className="text-xs text-slate-500 mt-1">{leave.reason}</p>
-                      </div>
+            {leaves.map((leave, i) => (
+              <motion.div
+                key={leave.id}
+                className="p-4 sm:p-5 hover:bg-slate-50/50 transition-colors"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.05 }}
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-start gap-4">
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                      leave.status === "approved" ? "bg-emerald-50" :
+                      leave.status === "rejected" ? "bg-red-50" :
+                      leave.status === "cancelled" ? "bg-slate-100" : "bg-amber-50"
+                    }`}>
+                      {leave.status === "approved" ? <CheckCircle className="w-5 h-5 text-emerald-600" /> :
+                       leave.status === "rejected" ? <XCircle className="w-5 h-5 text-red-600" /> :
+                       leave.status === "cancelled" ? <Ban className="w-5 h-5 text-slate-400" /> :
+                       <Clock className="w-5 h-5 text-amber-600" />}
                     </div>
-                    <div className="text-right flex-shrink-0 space-y-2">
-                      <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${
-                        leave.status === "approved" ? "bg-emerald-50 text-emerald-700" :
-                        leave.status === "rejected" ? "bg-red-50 text-red-700" :
-                        leave.status === "cancelled" ? "bg-slate-100 text-slate-500" :
-                        "bg-amber-50 text-amber-700"
-                      }`}>
-                        {leave.status.charAt(0).toUpperCase() + leave.status.slice(1)}
-                      </span>
-                      <p className="text-xs text-slate-400">
-                        Applied {new Date(leave.applied_at).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+                    <div>
+                      <p className="text-sm font-medium text-slate-900">Casual Leave (CL)</p>
+                      <p className="text-sm text-slate-600 mt-0.5">
+                        {new Date(leave.start_date).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}
+                        {leave.start_date !== leave.end_date && (
+                          <> — {new Date(leave.end_date).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}</>
+                        )}
                       </p>
-
-                      {/* Cancel Button - only for pending leaves */}
-                      {leave.status === "pending" && (
-                        <>
-                          {cancelConfirm === leave.id ? (
-                            <div className="flex items-center gap-1.5 mt-1">
-                              <button
-                                onClick={() => cancelLeave(leave.id)}
-                                disabled={cancellingId === leave.id}
-                                className="px-2 py-1 text-xs bg-red-500 text-white rounded font-medium hover:bg-red-600 transition-colors disabled:opacity-50"
-                              >
-                                {cancellingId === leave.id ? "..." : "Yes, Cancel"}
-                              </button>
-                              <button
-                                onClick={() => setCancelConfirm(null)}
-                                className="p-1 rounded hover:bg-slate-100"
-                              >
-                                <X className="w-3.5 h-3.5 text-slate-400" />
-                              </button>
-                            </div>
-                          ) : (
-                            <button
-                              onClick={() => setCancelConfirm(leave.id)}
-                              className="mt-1 px-2.5 py-1 text-xs text-red-600 bg-red-50 border border-red-100 rounded-md font-medium hover:bg-red-100 transition-colors"
-                            >
-                              Cancel Request
-                            </button>
-                          )}
-                        </>
-                      )}
+                      <p className="text-xs text-slate-500 mt-1">{leave.reason}</p>
                     </div>
                   </div>
-                </motion.div>
-              );
-            })}
+
+
+                  <div className="text-right flex-shrink-0 space-y-2">
+                    <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${
+                      leave.status === "approved" ? "bg-emerald-50 text-emerald-700" :
+                      leave.status === "rejected" ? "bg-red-50 text-red-700" :
+                      leave.status === "cancelled" ? "bg-slate-100 text-slate-500" :
+                      "bg-amber-50 text-amber-700"
+                    }`}>
+                      {leave.status.charAt(0).toUpperCase() + leave.status.slice(1)}
+                    </span>
+                    <p className="text-xs text-slate-400">
+                      Applied {new Date(leave.applied_at).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+                    </p>
+                    {/* Cancel Button - only for pending leaves */}
+                    {leave.status === "pending" && (
+                      <>
+                        {cancelConfirm === leave.id ? (
+                          <div className="flex items-center gap-1.5 mt-1">
+                            <button
+                              onClick={() => cancelLeave(leave.id)}
+                              disabled={cancellingId === leave.id}
+                              className="px-2 py-1 text-xs bg-red-500 text-white rounded font-medium hover:bg-red-600 transition-colors disabled:opacity-50"
+                            >
+                              {cancellingId === leave.id ? "..." : "Yes, Cancel"}
+                            </button>
+                            <button
+                              onClick={() => setCancelConfirm(null)}
+                              className="p-1 rounded hover:bg-slate-100"
+                            >
+                              <X className="w-3.5 h-3.5 text-slate-400" />
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => setCancelConfirm(leave.id)}
+                            className="mt-1 px-2.5 py-1 text-xs text-red-600 bg-red-50 border border-red-100 rounded-md font-medium hover:bg-red-100 transition-colors"
+                          >
+                            Cancel Request
+                          </button>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+              </motion.div>
+            ))}
           </div>
         )}
+
 
         {total > 10 && (
           <div className="flex items-center justify-between px-4 py-3 border-t border-slate-100">

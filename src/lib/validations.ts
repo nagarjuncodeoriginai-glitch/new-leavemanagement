@@ -33,7 +33,7 @@ export const employeeSchema = z.object({
 });
 
 export const leaveApplicationSchema = z.object({
-  leave_type: z.enum(["CL", "SL", "EL", "WFH"]),
+  leave_type: z.literal("CL"),
   start_date: z.string().min(1, "Start date is required"),
   end_date: z.string().min(1, "End date is required"),
   reason: z.string().min(10, "Reason must be at least 10 characters"),
@@ -44,19 +44,7 @@ export const leaveActionSchema = z.object({
   action: z.enum(["approved", "rejected"]),
 });
 
-export const leavePolicySchema = z.object({
-  leave_type: z.enum(["CL", "SL", "EL", "WFH"]),
-  label: z.string().min(1, "Label is required"),
-  monthly_quota: z.number().min(0).max(30),
-  carry_forward: z.boolean(),
-  requires_approval: z.boolean(),
-  min_days_advance: z.number().min(0).max(30),
-  max_consecutive_days: z.number().min(1).max(30),
-  is_active: z.boolean(),
-});
-
 export type LoginInput = z.infer<typeof loginSchema>;
 export type EmployeeInput = z.infer<typeof employeeSchema>;
 export type LeaveApplicationInput = z.infer<typeof leaveApplicationSchema>;
 export type LeaveActionInput = z.infer<typeof leaveActionSchema>;
-export type LeavePolicyInput = z.infer<typeof leavePolicySchema>;

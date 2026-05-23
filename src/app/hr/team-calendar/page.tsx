@@ -16,18 +16,11 @@ interface CalendarEntry {
   emp_id: string;
   employee_name: string;
   department: string;
-  leave_type: "CL" | "SL" | "EL" | "WFH";
+  leave_type: "CL";
   start_date: string;
   end_date: string;
   status: "approved" | "pending";
 }
-
-const leaveTypeColors: Record<string, { bg: string; text: string; label: string; dot: string }> = {
-  CL: { bg: "bg-blue-100", text: "text-blue-700", label: "Casual Leave", dot: "bg-blue-500" },
-  SL: { bg: "bg-red-100", text: "text-red-700", label: "Sick Leave", dot: "bg-red-500" },
-  EL: { bg: "bg-purple-100", text: "text-purple-700", label: "Earned Leave", dot: "bg-purple-500" },
-  WFH: { bg: "bg-emerald-100", text: "text-emerald-700", label: "Work From Home", dot: "bg-emerald-500" },
-};
 
 export default function HRTeamCalendarPage() {
   const [entries, setEntries] = useState<CalendarEntry[]>([]);
@@ -55,10 +48,8 @@ export default function HRTeamCalendarPage() {
     }
   };
 
-  useEffect(() => {
-    fetchCalendar();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [month, year, selectedDept]);
+  useEffect(() => { fetchCalendar(); }, [month, year, selectedDept]);
+
 
   const daysInMonth = new Date(year, month, 0).getDate();
   const monthName = new Date(year, month - 1).toLocaleString("default", { month: "long" });
@@ -67,13 +58,11 @@ export default function HRTeamCalendarPage() {
     if (month === 1) { setMonth(12); setYear(year - 1); }
     else setMonth(month - 1);
   };
-
   const nextMonth = () => {
     if (month === 12) { setMonth(1); setYear(year + 1); }
     else setMonth(month + 1);
   };
 
-  // Group entries by employee
   const employeeMap = new Map<string, CalendarEntry[]>();
   entries.forEach((entry) => {
     const key = `${entry.employee_name}|${entry.emp_id}`;
@@ -88,15 +77,14 @@ export default function HRTeamCalendarPage() {
     return date >= start && date <= end;
   };
 
-  // Stats
   const approvedCount = entries.filter((e) => e.status === "approved").length;
   const pendingCount = entries.filter((e) => e.status === "pending").length;
   const uniqueEmployees = new Set(entries.map((e) => e.employee_id)).size;
 
   const exportCSV = () => {
-    const rows = [["Employee", "Emp ID", "Department", "Leave Type", "Start Date", "End Date", "Status"]];
+    const rows = [["Employee", "Emp ID", "Department", "Start Date", "End Date", "Status"]];
     entries.forEach((e) => {
-      rows.push([e.employee_name, e.emp_id, e.department, e.leave_type, e.start_date, e.end_date, e.status]);
+      rows.push([e.employee_name, e.emp_id, e.department, e.start_date, e.end_date, e.status]);
     });
     const csv = rows.map((r) => r.join(",")).join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
@@ -106,6 +94,7 @@ export default function HRTeamCalendarPage() {
     a.download = `team-calendar-${monthName}-${year}.csv`;
     a.click();
   };
+
 
   return (
     <div className="space-y-6">
@@ -165,14 +154,13 @@ export default function HRTeamCalendarPage() {
         </div>
       </motion.div>
 
+
       {/* Legend */}
       <div className="flex flex-wrap gap-4">
-        {Object.entries(leaveTypeColors).map(([type, config]) => (
-          <div key={type} className="flex items-center gap-1.5">
-            <div className={`w-3 h-3 rounded-full ${config.dot}`} />
-            <span className="text-xs text-slate-600">{config.label}</span>
-          </div>
-        ))}
+        <div className="flex items-center gap-1.5">
+          <div className="w-3 h-3 rounded-full bg-blue-500" />
+          <span className="text-xs text-slate-600">On Leave (Approved)</span>
+        </div>
         <div className="flex items-center gap-1.5">
           <div className="w-3 h-3 rounded-full border-2 border-dashed border-slate-400" />
           <span className="text-xs text-slate-600">Pending Approval</span>
@@ -224,6 +212,8 @@ export default function HRTeamCalendarPage() {
                   })}
                 </tr>
               </thead>
+
+
               <tbody>
                 {Array.from(employeeMap.entries()).map(([key, leaves]) => {
                   const [name, empId] = key.split("|");
@@ -237,23 +227,18 @@ export default function HRTeamCalendarPage() {
                         const date = new Date(year, month - 1, day);
                         const isWeekend = date.getDay() === 0 || date.getDay() === 6;
                         const activeLeave = leaves.find((l) => isOnLeave(l, day));
-                        const colors = activeLeave ? leaveTypeColors[activeLeave.leave_type] : null;
-
                         return (
-                          <td
-                            key={day}
-                            className={`px-0.5 py-3 text-center ${isWeekend ? "bg-slate-100/50" : ""}`}
-                          >
-                            {activeLeave && colors ? (
+                          <td key={day} className={`px-0.5 py-3 text-center ${isWeekend ? "bg-slate-100/50" : ""}`}>
+                            {activeLeave ? (
                               <div
                                 className={`w-6 h-6 mx-auto rounded flex items-center justify-center text-[9px] font-bold ${
                                   activeLeave.status === "pending"
                                     ? "border-2 border-dashed border-slate-300 bg-slate-50 text-slate-500"
-                                    : `${colors.bg} ${colors.text}`
+                                    : "bg-blue-100 text-blue-700"
                                 }`}
-                                title={`${name}: ${colors.label} (${activeLeave.status})`}
+                                title={`${name}: CL (${activeLeave.status})`}
                               >
-                                {activeLeave.leave_type}
+                                CL
                               </div>
                             ) : null}
                           </td>

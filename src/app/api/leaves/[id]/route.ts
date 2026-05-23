@@ -50,7 +50,7 @@ export async function PUT(
         user_role: "hr",
         type: "leave_cancelled",
         title: "Leave Cancelled",
-        message: `${emp?.full_name || "Employee"} cancelled their ${leave.leave_type} request (${leave.start_date} to ${leave.end_date})`,
+        message: `${emp?.full_name || "Employee"} cancelled their CL request (${leave.start_date} to ${leave.end_date})`,
         is_read: false,
         created_at: new Date().toISOString(),
         related_id: leave.id,
@@ -103,55 +103,30 @@ export async function PUT(
         (lb) => lb.employee_id === leave.employee_id && lb.month === month && lb.year === year
       );
 
-      const typeKey = leave.leave_type.toLowerCase() as "cl" | "sl" | "el" | "wfh";
-      const usedKey = `used_${typeKey}` as "used_cl" | "used_sl" | "used_el" | "used_wfh";
-      const remainingKey = `remaining_${typeKey}` as "remaining_cl" | "remaining_sl" | "remaining_el" | "remaining_wfh";
-
       if (balanceIndex !== -1) {
-        (db.leave_balance[balanceIndex][usedKey] as number) += diffDays;
-        (db.leave_balance[balanceIndex][remainingKey] as number) -= diffDays;
+        db.leave_balance[balanceIndex].used_cl += diffDays;
+        db.leave_balance[balanceIndex].remaining_cl -= diffDays;
       } else {
-        // Create a new balance record
-        const clPolicy = (db.leave_policies || []).find((p) => p.leave_type === "CL");
-        const slPolicy = (db.leave_policies || []).find((p) => p.leave_type === "SL");
-        const elPolicy = (db.leave_policies || []).find((p) => p.leave_type === "EL");
-        const wfhPolicy = (db.leave_policies || []).find((p) => p.leave_type === "WFH");
-
-        const newBalance = {
+        db.leave_balance.push({
           id: getNextId(db.leave_balance),
           employee_id: leave.employee_id,
           month,
           year,
-          total_cl: clPolicy?.monthly_quota ?? 2,
-          used_cl: 0,
-          remaining_cl: clPolicy?.monthly_quota ?? 2,
-          total_sl: slPolicy?.monthly_quota ?? 1,
-          used_sl: 0,
-          remaining_sl: slPolicy?.monthly_quota ?? 1,
-          total_el: elPolicy?.monthly_quota ?? 1,
-          used_el: 0,
-          remaining_el: elPolicy?.monthly_quota ?? 1,
-          total_wfh: wfhPolicy?.monthly_quota ?? 4,
-          used_wfh: 0,
-          remaining_wfh: wfhPolicy?.monthly_quota ?? 4,
-        };
-
-        (newBalance[usedKey] as number) = diffDays;
-        (newBalance[remainingKey] as number) = (newBalance[`total_${typeKey}` as keyof typeof newBalance] as number) - diffDays;
-
-        db.leave_balance.push(newBalance);
+          total_cl: 2,
+          used_cl: diffDays,
+          remaining_cl: 2 - diffDays,
+        });
       }
     }
 
     // Notify the employee
-    const policyLabel = (db.leave_policies || []).find((p) => p.leave_type === leave.leave_type)?.label || leave.leave_type;
     db.notifications.push({
       id: getNextId(db.notifications),
       user_id: leave.employee_id,
       user_role: "employee",
       type: action === "approved" ? "leave_approved" : "leave_rejected",
       title: action === "approved" ? "Leave Approved" : "Leave Rejected",
-      message: `Your ${policyLabel} request (${leave.start_date} to ${leave.end_date}) has been ${action}.`,
+      message: `Your Casual Leave request (${leave.start_date} to ${leave.end_date}) has been ${action}.`,
       is_read: false,
       created_at: new Date().toISOString(),
       related_id: leave.id,

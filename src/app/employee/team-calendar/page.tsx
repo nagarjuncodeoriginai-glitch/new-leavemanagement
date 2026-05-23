@@ -15,18 +15,11 @@ interface CalendarEntry {
   emp_id: string;
   employee_name: string;
   department: string;
-  leave_type: "CL" | "SL" | "EL" | "WFH";
+  leave_type: "CL";
   start_date: string;
   end_date: string;
   status: "approved" | "pending";
 }
-
-const leaveTypeColors: Record<string, { bg: string; text: string; label: string }> = {
-  CL: { bg: "bg-blue-100", text: "text-blue-700", label: "Casual Leave" },
-  SL: { bg: "bg-red-100", text: "text-red-700", label: "Sick Leave" },
-  EL: { bg: "bg-purple-100", text: "text-purple-700", label: "Earned Leave" },
-  WFH: { bg: "bg-emerald-100", text: "text-emerald-700", label: "Work From Home" },
-};
 
 export default function TeamCalendarPage() {
   const [entries, setEntries] = useState<CalendarEntry[]>([]);
@@ -54,10 +47,8 @@ export default function TeamCalendarPage() {
     }
   };
 
-  useEffect(() => {
-    fetchCalendar();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [month, year, selectedDept]);
+  useEffect(() => { fetchCalendar(); }, [month, year, selectedDept]);
+
 
   const daysInMonth = new Date(year, month, 0).getDate();
   const monthName = new Date(year, month - 1).toLocaleString("default", { month: "long" });
@@ -80,7 +71,6 @@ export default function TeamCalendarPage() {
     employeeMap.get(key)!.push(entry);
   });
 
-  // Check if a day falls within a leave period
   const isOnLeave = (entry: CalendarEntry, day: number) => {
     const date = new Date(year, month - 1, day);
     const start = new Date(entry.start_date);
@@ -101,7 +91,7 @@ export default function TeamCalendarPage() {
           </div>
           <div>
             <h1 className="text-xl font-bold text-slate-900">Team Calendar</h1>
-            <p className="text-sm text-slate-500">See who&apos;s on leave or working from home</p>
+            <p className="text-sm text-slate-500">See who&apos;s on leave</p>
           </div>
         </div>
 
@@ -117,6 +107,7 @@ export default function TeamCalendarPage() {
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>
+
 
           {departments.length > 0 && (
             <div className="relative">
@@ -138,17 +129,16 @@ export default function TeamCalendarPage() {
 
       {/* Legend */}
       <div className="flex flex-wrap gap-3">
-        {Object.entries(leaveTypeColors).map(([type, config]) => (
-          <div key={type} className="flex items-center gap-1.5">
-            <div className={`w-3 h-3 rounded ${config.bg}`} />
-            <span className="text-xs text-slate-600">{config.label}</span>
-          </div>
-        ))}
+        <div className="flex items-center gap-1.5">
+          <div className="w-3 h-3 rounded bg-blue-100" />
+          <span className="text-xs text-slate-600">On Leave (Approved)</span>
+        </div>
         <div className="flex items-center gap-1.5">
           <div className="w-3 h-3 rounded bg-slate-100 border border-dashed border-slate-300" />
-          <span className="text-xs text-slate-600">Pending</span>
+          <span className="text-xs text-slate-600">Pending Approval</span>
         </div>
       </div>
+
 
       {/* Calendar Grid */}
       <motion.div
@@ -203,21 +193,16 @@ export default function TeamCalendarPage() {
                       const date = new Date(year, month - 1, day);
                       const isWeekend = date.getDay() === 0 || date.getDay() === 6;
                       const activeLeave = leaves.find((l) => isOnLeave(l, day));
-                      const colors = activeLeave ? leaveTypeColors[activeLeave.leave_type] : null;
-
                       return (
-                        <td
-                          key={day}
-                          className={`px-0.5 py-2.5 text-center ${isWeekend ? "bg-slate-50" : ""}`}
-                        >
-                          {activeLeave && colors ? (
+                        <td key={day} className={`px-0.5 py-2.5 text-center ${isWeekend ? "bg-slate-50" : ""}`}>
+                          {activeLeave ? (
                             <div
                               className={`w-5 h-5 mx-auto rounded-sm ${
                                 activeLeave.status === "pending"
                                   ? "border border-dashed border-slate-300 bg-slate-50"
-                                  : colors.bg
+                                  : "bg-blue-100"
                               }`}
-                              title={`${colors.label} (${activeLeave.status})`}
+                              title={`CL (${activeLeave.status})`}
                             />
                           ) : null}
                         </td>

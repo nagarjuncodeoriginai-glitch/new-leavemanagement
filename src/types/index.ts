@@ -67,14 +67,12 @@ export interface EmployeeFormData {
 
 // ==================== Leave Types ====================
 
-export type LeaveType = "CL" | "SL" | "EL" | "WFH";
-
 export interface Leave {
   id: number;
   employee_id: number;
   emp_id?: string;
   employee_name?: string;
-  leave_type: LeaveType;
+  leave_type: "CL";
   start_date: string;
   end_date: string;
   reason: string;
@@ -93,37 +91,13 @@ export interface LeaveBalance {
   total_cl: number;
   used_cl: number;
   remaining_cl: number;
-  total_sl: number;
-  used_sl: number;
-  remaining_sl: number;
-  total_el: number;
-  used_el: number;
-  remaining_el: number;
-  total_wfh: number;
-  used_wfh: number;
-  remaining_wfh: number;
 }
 
 export interface LeaveApplication {
-  leave_type: LeaveType;
+  leave_type: "CL";
   start_date: string;
   end_date: string;
   reason: string;
-}
-
-// ==================== Leave Policy Types ====================
-
-export interface LeavePolicy {
-  id: number;
-  leave_type: LeaveType;
-  label: string;
-  monthly_quota: number;
-  carry_forward: boolean;
-  requires_approval: boolean;
-  min_days_advance: number;
-  max_consecutive_days: number;
-  is_active: boolean;
-  updated_at: string;
 }
 
 // ==================== Notification Types ====================
@@ -132,7 +106,7 @@ export interface Notification {
   id: number;
   user_id: number;
   user_role: "hr" | "employee";
-  type: "leave_applied" | "leave_approved" | "leave_rejected" | "leave_cancelled" | "announcement" | "policy_update";
+  type: "leave_applied" | "leave_approved" | "leave_rejected" | "leave_cancelled" | "announcement";
   title: string;
   message: string;
   is_read: boolean;
@@ -195,7 +169,7 @@ export interface TeamCalendarEntry {
   emp_id: string;
   employee_name: string;
   department: string;
-  leave_type: LeaveType;
+  leave_type: "CL";
   start_date: string;
   end_date: string;
   status: "approved" | "pending";
