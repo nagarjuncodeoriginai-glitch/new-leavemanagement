@@ -76,10 +76,11 @@ export interface Leave {
   start_date: string;
   end_date: string;
   reason: string;
-  status: "pending" | "approved" | "rejected";
+  status: "pending" | "approved" | "rejected" | "cancelled";
   applied_at: string;
   reviewed_at?: string;
   reviewed_by?: string;
+  cancelled_at?: string;
 }
 
 export interface LeaveBalance {
@@ -97,6 +98,20 @@ export interface LeaveApplication {
   start_date: string;
   end_date: string;
   reason: string;
+}
+
+// ==================== Notification Types ====================
+
+export interface Notification {
+  id: number;
+  user_id: number;
+  user_role: "hr" | "employee";
+  type: "leave_applied" | "leave_approved" | "leave_rejected" | "leave_cancelled" | "announcement";
+  title: string;
+  message: string;
+  is_read: boolean;
+  created_at: string;
+  related_id?: number;
 }
 
 // ==================== Auth Types ====================
@@ -147,6 +162,19 @@ export interface EmployeeStats {
   rejectedLeaves: number;
 }
 
+// ==================== Team Calendar Types ====================
+
+export interface TeamCalendarEntry {
+  employee_id: number;
+  emp_id: string;
+  employee_name: string;
+  department: string;
+  leave_type: "CL";
+  start_date: string;
+  end_date: string;
+  status: "approved" | "pending";
+}
+
 // ==================== API Response Types ====================
 
 export interface ApiResponse<T = unknown> {
@@ -162,8 +190,6 @@ export interface PaginatedResponse<T> extends ApiResponse<T[]> {
   limit: number;
   totalPages: number;
 }
-
-
 
 // ==================== Holiday Types ====================
 

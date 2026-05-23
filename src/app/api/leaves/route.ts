@@ -162,9 +162,26 @@ export async function POST(request: NextRequest) {
       applied_at: new Date().toISOString(),
       reviewed_at: null,
       reviewed_by: null,
+      cancelled_at: null,
     };
 
     db.leaves.push(newLeave);
+
+    // Create notification for HR
+    if (!db.notifications) db.notifications = [];
+    const emp = db.employees.find((e) => e.id === user.id);
+    db.notifications.push({
+      id: getNextId(db.notifications),
+      user_id: 1, // HR admin
+      user_role: "hr",
+      type: "leave_applied",
+      title: "New Leave Request",
+      message: `${emp?.full_name || "Employee"} applied for Casual Leave (${start_date} to ${end_date})`,
+      is_read: false,
+      created_at: new Date().toISOString(),
+      related_id: newLeave.id,
+    });
+
     saveData(db);
 
     return NextResponse.json(

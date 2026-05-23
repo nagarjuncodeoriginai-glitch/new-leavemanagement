@@ -53,10 +53,11 @@ export interface DBData {
     start_date: string;
     end_date: string;
     reason: string;
-    status: "pending" | "approved" | "rejected";
+    status: "pending" | "approved" | "rejected" | "cancelled";
     applied_at: string;
     reviewed_at: string | null;
     reviewed_by: string | null;
+    cancelled_at: string | null;
   }[];
   leave_balance: {
     id: number;
@@ -83,6 +84,17 @@ export interface DBData {
     priority: "high" | "medium" | "low";
     author: string;
     isActive: boolean;
+  }[];
+  notifications: {
+    id: number;
+    user_id: number;
+    user_role: "hr" | "employee";
+    type: "leave_applied" | "leave_approved" | "leave_rejected" | "leave_cancelled" | "announcement";
+    title: string;
+    message: string;
+    is_read: boolean;
+    created_at: string;
+    related_id?: number;
   }[];
 }
 
@@ -117,13 +129,24 @@ const DEFAULT_DATA: DBData = {
     { id: 16, name: "Raksha Bandhan", date: "2025-08-09", type: "optional", day: "Saturday" },
   ],
   announcements: [],
+  notifications: [],
 };
 
 function initializeData(): DBData {
   try {
     if (fs.existsSync(DATA_FILE)) {
       const raw = fs.readFileSync(DATA_FILE, "utf-8");
-      return JSON.parse(raw);
+      const data = JSON.parse(raw) as DBData;
+      // Migrate: ensure new fields exist
+      if (!data.notifications) data.notifications = [];
+      // Migrate leaves to include cancelled_at field
+      if (data.leaves && data.leaves.length > 0) {
+        data.leaves = data.leaves.map((l) => ({
+          ...l,
+          cancelled_at: l.cancelled_at ?? null,
+        }));
+      }
+      return data;
     }
   } catch {
     // If file is corrupted, recreate it

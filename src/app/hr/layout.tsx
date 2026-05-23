@@ -19,13 +19,16 @@ import {
   Sparkles,
   TrendingUp,
   Home,
+  Calendar,
 } from "lucide-react";
 import { LiveClock } from "@/components/ui/live-clock";
+import NotificationsPanel from "@/components/notifications-panel";
 
 const navItems = [
   { href: "/hr", label: "Dashboard", icon: LayoutDashboard, color: "from-blue-500 to-indigo-600" },
   { href: "/hr/employees", label: "Employees", icon: Users, color: "from-violet-500 to-purple-600" },
   { href: "/hr/leaves", label: "Leaves", icon: CalendarCheck, color: "from-amber-500 to-orange-600" },
+  { href: "/hr/team-calendar", label: "Team Calendar", icon: Calendar, color: "from-teal-500 to-cyan-600" },
   { href: "/hr/reports", label: "Reports", icon: BarChart3, color: "from-cyan-500 to-blue-600" },
   { href: "/hr/holidays", label: "Holidays", icon: CalendarDays, color: "from-emerald-500 to-teal-600" },
   { href: "/hr/performance", label: "Performance", icon: TrendingUp, color: "from-fuchsia-500 to-pink-600" },
@@ -165,6 +168,7 @@ export default function HRLayout({ children }: { children: React.ReactNode }) {
               <p className="text-[11px] text-slate-400 font-medium">Manage your workforce efficiently</p>
             </div>
             <LiveClock />
+            <NotificationsPanel />
             <div className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 rounded-xl border border-blue-100">
               <Sparkles className="w-3 h-3 text-blue-500" />
               <span className="text-[11px] font-semibold text-blue-700">Admin</span>

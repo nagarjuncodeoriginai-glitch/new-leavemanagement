@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getData, saveData, getNextId } from "@/database/connection";
 import { requireAuth } from "@/lib/auth";
 
-// GET leave balance
+// GET leave balance (CL only)
 export async function GET(request: NextRequest) {
   try {
     const user = await requireAuth();
