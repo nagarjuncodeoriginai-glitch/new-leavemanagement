@@ -116,12 +116,7 @@ const DEFAULT_DATA: DBData = {
     { id: 15, name: "Eid ul-Fitr", date: "2025-03-31", type: "optional", day: "Monday" },
     { id: 16, name: "Raksha Bandhan", date: "2025-08-09", type: "optional", day: "Saturday" },
   ],
-  announcements: [
-    { id: 1, title: "Annual Performance Review Cycle Begins", content: "The Q2 2025 performance review cycle starts from June 1st. Please ensure your goals are updated in the system.", category: "important", date: "2025-05-22", priority: "high", author: "HR Team", isActive: true },
-    { id: 2, title: "New Work From Home Policy Update", content: "Effective June 1, 2025, employees can avail up to 2 WFH days per week with prior manager approval.", category: "policy", date: "2025-05-20", priority: "high", author: "HR Admin", isActive: true },
-    { id: 3, title: "Team Building Event - Adventure Outing", content: "Join us for an exciting team building adventure on June 15th at Eco Park. Register by June 5th.", category: "event", date: "2025-05-18", priority: "medium", author: "People & Culture", isActive: true },
-    { id: 4, title: "Employee Wellness Program Launch", content: "We're launching our new Employee Wellness Program with gym membership, counseling, and meditation app subscriptions.", category: "update", date: "2025-05-10", priority: "medium", author: "Wellness Team", isActive: true },
-  ],
+  announcements: [],
 };
 
 function initializeData(): DBData {
