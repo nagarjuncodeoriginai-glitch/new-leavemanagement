@@ -73,7 +73,7 @@ export default function EmployeeLayout({ children }: { children: React.ReactNode
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-emerald-50/20">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-emerald-50/30 bg-mesh-animated bg-grid-pattern">
       {/* Mobile sidebar overlay */}
       <AnimatePresence>
         {sidebarOpen && (
@@ -89,7 +89,7 @@ export default function EmployeeLayout({ children }: { children: React.ReactNode
 
       {/* Desktop Sidebar */}
       <aside className={`fixed top-0 left-0 h-full w-[280px] z-50 transform transition-all duration-500 ease-out lg:translate-x-0 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
-        <div className="flex flex-col h-full glass-sidebar shadow-3d-deep">
+        <div className="flex flex-col h-full glass-sidebar shadow-3d-deep border-r border-white/40">
           {/* Logo */}
           <div className="flex items-center gap-3 px-5 py-5 border-b border-slate-100/60">
             <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-colored-emerald ring-2 ring-emerald-400/20">
