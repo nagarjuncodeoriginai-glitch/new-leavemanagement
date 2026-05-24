@@ -17,7 +17,6 @@ import {
   Bot,
   CalendarDays,
   Bell,
-  Sparkles,
   Home,
   Calendar,
 } from "lucide-react";
