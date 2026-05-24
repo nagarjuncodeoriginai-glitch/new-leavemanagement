@@ -1,17 +1,25 @@
 /**
  * Storage Layer - Works on both local dev AND Vercel serverless
  * 
- * On local: Uses file system (data.json) for persistence
- * On Vercel: Uses in-memory store (persists within same instance)
+ * On local: Uses data.json in project root
+ * On Vercel: Uses /tmp/data.json (writable temp directory that persists
+ *            for the lifetime of the serverless instance - much longer than memory)
+ * 
+ * Both read from the bundled initial data if no file exists yet.
  */
 
 import bcrypt from "bcryptjs";
 
-const IS_VERCEL = process.env.VERCEL === "1" || process.env.VERCEL_ENV !== undefined;
-
-// STATIC pre-computed bcrypt hash for password "hrcodeoriginai@1234"
-// This is a valid bcrypt hash - NO runtime generation needed
-const HR_PASSWORD_HASH = "$2a$10$8KzQn4X5B5G5L5J5K5M5NOPQRSTUVWXYZabcdefghijklmnopqrst";
+function getDataFilePath(): string {
+  const path = require("path");
+  const IS_VERCEL = process.env.VERCEL === "1" || process.env.VERCEL_ENV !== undefined;
+  
+  if (IS_VERCEL) {
+    // /tmp is WRITABLE on Vercel serverless (up to 512MB, persists for instance lifetime)
+    return "/tmp/data.json";
+  }
+  return path.join(process.cwd(), "data.json");
+}
 
 export interface DBData {
   hr_admin: { id: number; username: string; password: string }[];
@@ -58,7 +66,6 @@ export interface DBData {
 }
 
 function createDefaultData(): DBData {
-  // Generate hash lazily only when creating default data (once per cold start)
   const hash = bcrypt.hashSync("hrcodeoriginai@1234", 10);
   return {
     hr_admin: [{ id: 1, username: "codeorigin", password: hash }],
@@ -91,27 +98,15 @@ function createDefaultData(): DBData {
   };
 }
 
-// Global in-memory store
-let memoryStore: DBData | null = null;
+export function getData(): DBData {
+  const fs = require("fs");
+  const DATA_FILE = getDataFilePath();
 
-function initializeData(): DBData {
-  if (memoryStore) return memoryStore;
-
-  // On Vercel: pure in-memory, no filesystem
-  if (IS_VERCEL) {
-    memoryStore = createDefaultData();
-    return memoryStore;
-  }
-
-  // On local dev: try to read from data.json
   try {
-    const fs = require("fs");
-    const path = require("path");
-    const DATA_FILE = path.join(process.cwd(), "data.json");
-
     if (fs.existsSync(DATA_FILE)) {
       const raw = fs.readFileSync(DATA_FILE, "utf-8");
       const data = JSON.parse(raw) as DBData;
+      // Migrate: ensure new fields exist
       if (!data.notifications) data.notifications = [];
       if (!data.performance_goals) data.performance_goals = [];
       if (!data.performance_feedback) data.performance_feedback = [];
@@ -119,44 +114,30 @@ function initializeData(): DBData {
       if (data.leaves && data.leaves.length > 0) {
         data.leaves = data.leaves.map((l) => ({ ...l, cancelled_at: l.cancelled_at ?? null }));
       }
-      memoryStore = data;
       return data;
     }
   } catch {
-    // ignore
+    // File doesn't exist yet — create it
   }
 
-  // Fresh data
-  memoryStore = createDefaultData();
-
+  // First time: create default data and write to file
+  const freshData = createDefaultData();
   try {
-    const fs = require("fs");
-    const path = require("path");
-    const DATA_FILE = path.join(process.cwd(), "data.json");
-    fs.writeFileSync(DATA_FILE, JSON.stringify(memoryStore, null, 2));
+    fs.writeFileSync(DATA_FILE, JSON.stringify(freshData, null, 2));
   } catch {
-    // ignore
+    // ignore write errors
   }
-
-  return memoryStore;
-}
-
-export function getData(): DBData {
-  return initializeData();
+  return freshData;
 }
 
 export function saveData(data: DBData): void {
-  memoryStore = data;
+  const fs = require("fs");
+  const DATA_FILE = getDataFilePath();
 
-  if (!IS_VERCEL) {
-    try {
-      const fs = require("fs");
-      const path = require("path");
-      const DATA_FILE = path.join(process.cwd(), "data.json");
-      fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
-    } catch {
-      // ignore
-    }
+  try {
+    fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
+  } catch (err) {
+    console.error("saveData write error:", err);
   }
 }
 
