@@ -1,8 +1,6 @@
 /**
- * MongoDB Storage Layer - Permanent data persistence on Vercel
- * 
- * Uses MongoDB Atlas (free tier) for all data storage.
- * Data NEVER gets lost - persists forever across all deployments.
+ * MongoDB Storage Layer - Permanent data persistence
+ * Uses MongoDB Atlas with proper connection caching for Vercel serverless.
  */
 
 import { MongoClient, Db } from "mongodb";
@@ -11,23 +9,26 @@ import bcrypt from "bcryptjs";
 const MONGODB_URI = process.env.MONGODB_URI || "";
 const DB_NAME = "hrmanagement";
 
-let cachedClient: MongoClient | null = null;
-let cachedDb: Db | null = null;
+// Global connection cache - survives across requests in same instance
+let cached: { client: MongoClient; db: Db } | null = null;
 
 async function connectToDatabase(): Promise<Db> {
-  if (cachedDb) return cachedDb;
+  if (cached) return cached.db;
 
   if (!MONGODB_URI) {
-    throw new Error("MONGODB_URI environment variable is not set");
+    throw new Error("MONGODB_URI environment variable is not set.");
   }
 
-  const client = new MongoClient(MONGODB_URI);
+  const client = new MongoClient(MONGODB_URI, {
+    maxPoolSize: 5,
+    minPoolSize: 1,
+    serverSelectionTimeoutMS: 10000,
+    connectTimeoutMS: 10000,
+  });
+
   await client.connect();
   const db = client.db(DB_NAME);
-
-  cachedClient = client;
-  cachedDb = db;
-
+  cached = { client, db };
   return db;
 }
 
@@ -76,6 +77,7 @@ export interface DBData {
 }
 
 function createDefaultData(): DBData {
+  // Use fresh hash to guarantee login works
   const hash = bcrypt.hashSync("hrcodeoriginai@1234", 10);
   return {
     hr_admin: [{ id: 1, username: "codeorigin", password: hash }],
@@ -108,10 +110,6 @@ function createDefaultData(): DBData {
   };
 }
 
-/**
- * Get all data from MongoDB (async).
- * All API routes already use async handlers, so just add `await` before getData().
- */
 export async function getData(): Promise<DBData> {
   try {
     const db = await connectToDatabase();
@@ -119,7 +117,7 @@ export async function getData(): Promise<DBData> {
 
     const doc = await collection.findOne({ _id: "main" as any });
 
-    if (doc) {
+    if (doc && doc.data) {
       const data = doc.data as DBData;
       if (!data.notifications) data.notifications = [];
       if (!data.performance_goals) data.performance_goals = [];
@@ -131,9 +129,13 @@ export async function getData(): Promise<DBData> {
       return data;
     }
 
-    // First time: seed database with default data
+    // First time: seed with fresh data
     const freshData = createDefaultData();
-    await collection.insertOne({ _id: "main" as any, data: freshData });
+    await collection.updateOne(
+      { _id: "main" as any },
+      { $set: { data: freshData } },
+      { upsert: true }
+    );
     return freshData;
   } catch (error) {
     console.error("MongoDB getData error:", error);
@@ -141,10 +143,6 @@ export async function getData(): Promise<DBData> {
   }
 }
 
-/**
- * Save all data to MongoDB (async).
- * All API routes already use async handlers, so just add `await` before saveData().
- */
 export async function saveData(data: DBData): Promise<void> {
   try {
     const db = await connectToDatabase();
@@ -152,7 +150,7 @@ export async function saveData(data: DBData): Promise<void> {
 
     await collection.updateOne(
       { _id: "main" as any },
-      { $set: { data } },
+      { $set: { data, updatedAt: new Date() } },
       { upsert: true }
     );
   } catch (error) {
