@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     const year = parseInt(searchParams.get("year") || String(new Date().getFullYear()));
     const employeeId = searchParams.get("employee_id");
 
-    const db = getData();
+    const db = await getData();
 
     if (user.role === "hr" && !employeeId) {
       // HR viewing all balances
@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
         remaining_cl: 2,
       };
       db.leave_balance.push(balance);
-      saveData(db);
+      await saveData(db);
     }
 
     return NextResponse.json({ success: true, data: balance });

@@ -10,7 +10,7 @@ export async function GET(
   try {
     const user = await requireAuth();
     const { id } = await params;
-    const db = getData();
+    const db = await getData();
 
     let employee;
 
@@ -45,7 +45,7 @@ export async function PUT(
     await requireAuth("hr");
     const { id } = await params;
     const body = await request.json();
-    const db = getData();
+    const db = await getData();
 
     const index = db.employees.findIndex((e) => e.id === parseInt(id));
     if (index === -1) {
@@ -72,7 +72,7 @@ export async function PUT(
     }
 
     db.employees[index].updated_at = new Date().toISOString();
-    saveData(db);
+    await saveData(db);
 
     return NextResponse.json({ success: true, message: "Employee updated successfully" });
   } catch (error: unknown) {
@@ -95,14 +95,14 @@ export async function DELETE(
   try {
     await requireAuth("hr");
     const { id } = await params;
-    const db = getData();
+    const db = await getData();
     const empId = parseInt(id);
 
     db.employees = db.employees.filter((e) => e.id !== empId);
     db.leaves = db.leaves.filter((l) => l.employee_id !== empId);
     db.leave_balance = db.leave_balance.filter((lb) => lb.employee_id !== empId);
 
-    saveData(db);
+    await saveData(db);
 
     return NextResponse.json({ success: true, message: "Employee deleted successfully" });
   } catch (error: unknown) {

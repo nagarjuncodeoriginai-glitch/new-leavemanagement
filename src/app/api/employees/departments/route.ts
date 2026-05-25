@@ -6,7 +6,7 @@ export async function GET() {
   try {
     await requireAuth("hr");
 
-    const db = getData();
+    const db = await getData();
     const deptMap: Record<string, number> = {};
 
     for (const emp of db.employees) {

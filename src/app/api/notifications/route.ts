@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
     const unreadOnly = searchParams.get("unread") === "true";
     const limit = parseInt(searchParams.get("limit") || "20");
 
-    const db = getData();
+    const db = await getData();
     if (!db.notifications) db.notifications = [];
 
     let notifications = db.notifications.filter(
@@ -53,7 +53,7 @@ export async function PUT(request: NextRequest) {
     const body = await request.json();
     const { notification_ids, mark_all } = body;
 
-    const db = getData();
+    const db = await getData();
     if (!db.notifications) db.notifications = [];
 
     if (mark_all) {
@@ -81,7 +81,7 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    saveData(db);
+    await saveData(db);
 
     return NextResponse.json({
       success: true,

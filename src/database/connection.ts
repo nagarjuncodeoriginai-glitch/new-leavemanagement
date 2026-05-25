@@ -1,24 +1,34 @@
 /**
- * Storage Layer - Works on both local dev AND Vercel serverless
+ * MongoDB Storage Layer - Permanent data persistence on Vercel
  * 
- * On local: Uses data.json in project root
- * On Vercel: Uses /tmp/data.json (writable temp directory that persists
- *            for the lifetime of the serverless instance - much longer than memory)
- * 
- * Both read from the bundled initial data if no file exists yet.
+ * Uses MongoDB Atlas (free tier) for all data storage.
+ * Data NEVER gets lost - persists forever across all deployments.
  */
 
+import { MongoClient, Db } from "mongodb";
 import bcrypt from "bcryptjs";
 
-function getDataFilePath(): string {
-  const path = require("path");
-  const IS_VERCEL = process.env.VERCEL === "1" || process.env.VERCEL_ENV !== undefined;
-  
-  if (IS_VERCEL) {
-    // /tmp is WRITABLE on Vercel serverless (up to 512MB, persists for instance lifetime)
-    return "/tmp/data.json";
+const MONGODB_URI = process.env.MONGODB_URI || "";
+const DB_NAME = "hrmanagement";
+
+let cachedClient: MongoClient | null = null;
+let cachedDb: Db | null = null;
+
+async function connectToDatabase(): Promise<Db> {
+  if (cachedDb) return cachedDb;
+
+  if (!MONGODB_URI) {
+    throw new Error("MONGODB_URI environment variable is not set");
   }
-  return path.join(process.cwd(), "data.json");
+
+  const client = new MongoClient(MONGODB_URI);
+  await client.connect();
+  const db = client.db(DB_NAME);
+
+  cachedClient = client;
+  cachedDb = db;
+
+  return db;
 }
 
 export interface DBData {
@@ -98,15 +108,19 @@ function createDefaultData(): DBData {
   };
 }
 
-export function getData(): DBData {
-  const fs = require("fs");
-  const DATA_FILE = getDataFilePath();
-
+/**
+ * Get all data from MongoDB (async).
+ * All API routes already use async handlers, so just add `await` before getData().
+ */
+export async function getData(): Promise<DBData> {
   try {
-    if (fs.existsSync(DATA_FILE)) {
-      const raw = fs.readFileSync(DATA_FILE, "utf-8");
-      const data = JSON.parse(raw) as DBData;
-      // Migrate: ensure new fields exist
+    const db = await connectToDatabase();
+    const collection = db.collection("app_data");
+
+    const doc = await collection.findOne({ _id: "main" as any });
+
+    if (doc) {
+      const data = doc.data as DBData;
       if (!data.notifications) data.notifications = [];
       if (!data.performance_goals) data.performance_goals = [];
       if (!data.performance_feedback) data.performance_feedback = [];
@@ -116,28 +130,33 @@ export function getData(): DBData {
       }
       return data;
     }
-  } catch {
-    // File doesn't exist yet — create it
-  }
 
-  // First time: create default data and write to file
-  const freshData = createDefaultData();
-  try {
-    fs.writeFileSync(DATA_FILE, JSON.stringify(freshData, null, 2));
-  } catch {
-    // ignore write errors
+    // First time: seed database with default data
+    const freshData = createDefaultData();
+    await collection.insertOne({ _id: "main" as any, data: freshData });
+    return freshData;
+  } catch (error) {
+    console.error("MongoDB getData error:", error);
+    return createDefaultData();
   }
-  return freshData;
 }
 
-export function saveData(data: DBData): void {
-  const fs = require("fs");
-  const DATA_FILE = getDataFilePath();
-
+/**
+ * Save all data to MongoDB (async).
+ * All API routes already use async handlers, so just add `await` before saveData().
+ */
+export async function saveData(data: DBData): Promise<void> {
   try {
-    fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
-  } catch (err) {
-    console.error("saveData write error:", err);
+    const db = await connectToDatabase();
+    const collection = db.collection("app_data");
+
+    await collection.updateOne(
+      { _id: "main" as any },
+      { $set: { data } },
+      { upsert: true }
+    );
+  } catch (error) {
+    console.error("MongoDB saveData error:", error);
   }
 }
 

@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
     }
 
     const { username, password } = validation.data;
-    const db = getData();
+    const db = await getData();
 
     // Check HR Admin first
     const admin = db.hr_admin.find((a) => a.username === username);

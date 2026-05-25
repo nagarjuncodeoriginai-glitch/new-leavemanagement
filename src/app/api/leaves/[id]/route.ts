@@ -13,7 +13,7 @@ export async function PUT(
     const body = await request.json();
     const { action } = body;
 
-    const db = getData();
+    const db = await getData();
     if (!db.notifications) db.notifications = [];
     const leaveIndex = db.leaves.findIndex((l) => l.id === parseInt(id));
 
@@ -56,7 +56,7 @@ export async function PUT(
         related_id: leave.id,
       });
 
-      saveData(db);
+      await saveData(db);
 
       return NextResponse.json({
         success: true,
@@ -132,7 +132,7 @@ export async function PUT(
       related_id: leave.id,
     });
 
-    saveData(db);
+    await saveData(db);
 
     return NextResponse.json({
       success: true,

@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
     const category = searchParams.get("category") || "";
     const priority = searchParams.get("priority") || "";
 
-    const db = getData();
+    const db = await getData();
     let filtered = (db.announcements || []).filter(a => a.isActive);
 
     if (category) {
@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const db = getData();
+    const db = await getData();
     if (!db.announcements) db.announcements = [];
 
     const newAnnouncement = {
@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
     };
 
     db.announcements.push(newAnnouncement);
-    saveData(db);
+    await saveData(db);
 
     return NextResponse.json(
       { success: true, message: "Announcement created successfully", data: newAnnouncement },

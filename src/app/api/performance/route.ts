@@ -6,7 +6,7 @@ import { requireAuth } from "@/lib/auth";
 export async function GET() {
   try {
     const user = await requireAuth();
-    const db = getData();
+    const db = await getData();
 
     let goals = db.performance_goals || [];
     let feedback = db.performance_feedback || [];
@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const db = getData();
+    const db = await getData();
     if (!db.performance_goals) db.performance_goals = [];
     if (!db.performance_feedback) db.performance_feedback = [];
     if (!db.performance_skills) db.performance_skills = [];
@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
         employeeId: data.employeeId,
       };
       db.performance_goals.push(newGoal);
-      saveData(db);
+      await saveData(db);
       return NextResponse.json({ success: true, message: "Goal assigned", data: newGoal }, { status: 201 });
     }
 
@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
         employeeId: data.employeeId,
       };
       db.performance_feedback.push(newFeedback);
-      saveData(db);
+      await saveData(db);
       return NextResponse.json({ success: true, message: "Feedback submitted", data: newFeedback }, { status: 201 });
     }
 
@@ -123,7 +123,7 @@ export async function POST(request: NextRequest) {
         employeeId: data.employeeId,
       };
       db.performance_skills.push(newSkill);
-      saveData(db);
+      await saveData(db);
       return NextResponse.json({ success: true, message: "Skill rated", data: newSkill }, { status: 201 });
     }
 
@@ -152,7 +152,7 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ success: false, message: "type and data required" }, { status: 400 });
     }
 
-    const db = getData();
+    const db = await getData();
     if (!db.performance_goals) db.performance_goals = [];
 
     if (type === "goal") {
@@ -170,7 +170,7 @@ export async function PUT(request: NextRequest) {
         category: data.category ?? db.performance_goals[index].category,
         employeeId: data.employeeId ?? db.performance_goals[index].employeeId,
       };
-      saveData(db);
+      await saveData(db);
       return NextResponse.json({ success: true, message: "Goal updated", data: db.performance_goals[index] });
     }
 
@@ -200,7 +200,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ success: false, message: "type and id required" }, { status: 400 });
     }
 
-    const db = getData();
+    const db = await getData();
 
     if (type === "goal") {
       if (!db.performance_goals) db.performance_goals = [];
@@ -209,7 +209,7 @@ export async function DELETE(request: NextRequest) {
       if (db.performance_goals.length === before) {
         return NextResponse.json({ success: false, message: "Goal not found" }, { status: 404 });
       }
-      saveData(db);
+      await saveData(db);
       return NextResponse.json({ success: true, message: "Goal deleted" });
     }
 
@@ -220,7 +220,7 @@ export async function DELETE(request: NextRequest) {
       if (db.performance_feedback.length === before) {
         return NextResponse.json({ success: false, message: "Feedback not found" }, { status: 404 });
       }
-      saveData(db);
+      await saveData(db);
       return NextResponse.json({ success: true, message: "Feedback deleted" });
     }
 

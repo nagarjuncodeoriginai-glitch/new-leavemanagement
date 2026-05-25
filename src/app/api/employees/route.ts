@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "10");
 
-    const db = getData();
+    const db = await getData();
     let filtered = [...db.employees];
 
     if (search) {
@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
     }
 
     const data = validation.data;
-    const db = getData();
+    const db = await getData();
 
     // Check for duplicates
     if (db.employees.find((e) => e.emp_id === data.emp_id)) {
@@ -147,7 +147,7 @@ export async function POST(request: NextRequest) {
       remaining_cl: 2,
     });
 
-    saveData(db);
+    await saveData(db);
 
     return NextResponse.json(
       { success: true, message: "Employee created successfully", id: newId },

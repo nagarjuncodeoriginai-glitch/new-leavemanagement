@@ -6,7 +6,7 @@ export async function GET() {
   try {
     await requireAuth("hr");
 
-    const db = getData();
+    const db = await getData();
     const now = new Date();
     const currentMonth = now.getMonth() + 1;
     const currentYear = now.getFullYear();

@@ -5,7 +5,7 @@ import { requireAuth } from "@/lib/auth";
 export async function GET() {
   try {
     const user = await requireAuth("employee");
-    const db = getData();
+    const db = await getData();
 
     const now = new Date();
     const currentMonth = now.getMonth() + 1;
@@ -27,7 +27,7 @@ export async function GET() {
         remaining_cl: 2,
       };
       db.leave_balance.push(balance);
-      saveData(db);
+      await saveData(db);
     }
 
     // Counts

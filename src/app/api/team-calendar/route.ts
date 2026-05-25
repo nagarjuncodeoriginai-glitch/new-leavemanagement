@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
     const year = parseInt(searchParams.get("year") || String(new Date().getFullYear()));
     const department = searchParams.get("department") || "";
 
-    const db = getData();
+    const db = await getData();
 
     // Get approved and pending leaves that overlap with the requested month
     const monthStart = new Date(year, month - 1, 1);

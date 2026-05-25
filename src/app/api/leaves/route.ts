@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "10");
 
-    const db = getData();
+    const db = await getData();
     let filtered = [...db.leaves];
 
     // Employees can only see their own leaves
@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
     // Check leave balance for the month
     const month = start.getMonth() + 1;
     const year = start.getFullYear();
-    const db = getData();
+    const db = await getData();
 
     let balance = db.leave_balance.find(
       (lb) => lb.employee_id === user.id && lb.month === month && lb.year === year
@@ -182,7 +182,7 @@ export async function POST(request: NextRequest) {
       related_id: newLeave.id,
     });
 
-    saveData(db);
+    await saveData(db);
 
     return NextResponse.json(
       { success: true, message: "Leave application submitted successfully", id: newLeave.id },

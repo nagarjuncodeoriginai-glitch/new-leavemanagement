@@ -8,7 +8,7 @@ export async function POST() {
     const currentMonth = now.getMonth() + 1;
     const currentYear = now.getFullYear();
 
-    const db = getData();
+    const db = await getData();
     const activeEmployees = db.employees.filter((e) => e.status === "active");
 
     let resetCount = 0;
@@ -36,7 +36,7 @@ export async function POST() {
       resetCount++;
     }
 
-    saveData(db);
+    await saveData(db);
 
     return NextResponse.json({
       success: true,
